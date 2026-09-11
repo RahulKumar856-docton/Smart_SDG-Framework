@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1e3a8a;
+  --color-secondary: #16a34a;
+  --color-accent: #0d9488;
+  --color-background: #f8fafc;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-slate-800 font-sans antialiased;
+  }
+
+  /* ─── Dark Mode ────────────────────────────────────────── */
+  html.dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+  }
+
+  html.dark .bg-white {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9;
+  }
+
+  html.dark .bg-slate-50, html.dark .bg-gray-50,
+  html.dark [class*="bg-slate-50"], html.dark [class*="bg-gray-50"] {
+    background-color: #0f172a !important;
+  }
+
+  html.dark .bg-slate-100, html.dark .bg-gray-100,
+  html.dark [class*="bg-slate-100"], html.dark [class*="bg-gray-100"] {
+    background-color: #1e293b !important;
+  }
+
+  html.dark .border-slate-200, html.dark .border-gray-200,
+  html.dark .border-slate-100, html.dark .border-gray-100 {
+    border-color: #334155 !important;
+  }
+
+  html.dark .text-slate-900, html.dark .text-gray-900,
+  html.dark .text-slate-800, html.dark .text-gray-800 {
+    color: #f8fafc !important;
+  }
+
+  html.dark .text-slate-700, html.dark .text-gray-700 {
+    color: #e2e8f0 !important;
+  }
+
+  html.dark .text-slate-600, html.dark .text-gray-600,
+  html.dark .text-slate-500, html.dark .text-gray-500 {
+    color: #94a3b8 !important;
+  }
+
+  html.dark .text-slate-400, html.dark .text-gray-400 {
+    color: #64748b !important;
+  }
+
+  /* Improve visibility of colored text in dark mode */
+  html.dark .text-blue-600 { color: #60a5fa !important; }
+  html.dark .text-purple-600 { color: #c084fc !important; }
+  html.dark .text-green-600 { color: #4ade80 !important; }
+  html.dark .text-red-600 { color: #f87171 !important; }
+  html.dark .text-orange-600 { color: #fb923c !important; }
+  html.dark .text-teal-600 { color: #2dd4bf !important; }
+  html.dark .text-teal-700 { color: #14b8a6 !important; }
+  
+  html.dark .bg-teal-50 { background-color: #134e4a !important; color: #ccfbf1 !important; }
+  html.dark .bg-teal-100 { background-color: #115e59 !important; color: #ccfbf1 !important; }
+  html.dark .bg-red-50 { background-color: #7f1d1d !important; color: #fee2e2 !important; }
+  html.dark .bg-green-100 { background-color: #14532d !important; color: #dcfce7 !important; }
+  html.dark .bg-slate-100.text-slate-600 { background-color: #334155 !important; color: #cbd5e1 !important; }
+
+  html.dark .divide-slate-100 > * + *, html.dark .divide-gray-100 > * + * {
+    border-color: #334155 !important;
+  }
+
+  /* ─── Text Scaling ─────────────────────────────────────── */
+  html[data-text-size="LARGE"] {
+    font-size: 110%;
+  }
+
+  html[data-text-size="EXTRA_LARGE"] {
+    font-size: 120%;
+  }
+
+  /* ─── Reduce Motion ────────────────────────────────────── */
+  html[data-reduce-motion="true"] *,
+  html[data-reduce-motion="true"] *::before,
+  html[data-reduce-motion="true"] *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+}
