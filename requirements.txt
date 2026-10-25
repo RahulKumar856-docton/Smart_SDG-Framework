@@ -8,3 +8,5 @@ reportlab
 Werkzeug
 Flask-Session
 python-dotenv
+gunicorn
+

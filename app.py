@@ -90,13 +90,24 @@ def create_app():
             app.permanent_session_lifetime = timedelta(minutes=timeout_mins)
             session.permanent = True
 
-    @app.route('/')
-    def index():
-        return jsonify({"success": True, "message": "Smart SDG Framework API is running!"})
+    client_dist = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'client', 'dist')
 
-    @app.errorhandler(404)
-    def not_found(e):
-        return jsonify({"success": False, "message": "Endpoint not found"}), 404
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_frontend_or_api(path):
+        # Allow API routes and evidence uploads to be handled by respective endpoints
+        if path.startswith('api/') or path.startswith('uploads/'):
+            return jsonify({"success": False, "message": "Endpoint not found"}), 404
+            
+        target = os.path.join(client_dist, path)
+        if path and os.path.exists(target) and not os.path.isdir(target):
+            return send_from_directory(client_dist, path)
+            
+        index_file = os.path.join(client_dist, 'index.html')
+        if os.path.exists(index_file):
+            return send_from_directory(client_dist, 'index.html')
+            
+        return jsonify({"success": True, "message": "Smart SDG Framework API is running!"})
 
     @app.errorhandler(500)
     def internal_error(e):
@@ -104,6 +115,40 @@ def create_app():
 
     return app
 
+def ensure_db_initialized():
+    db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database.db')
+    needs_init = not os.path.exists(db_path) or os.path.getsize(db_path) == 0
+    if not needs_init:
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cur.fetchone():
+                needs_init = True
+            conn.close()
+        except Exception:
+            needs_init = True
+
+    if needs_init:
+        print("[DATABASE] Initializing SQLite database schema...")
+        try:
+            from init_db import init_db
+            init_db()
+            from migrate_roles_and_permissions import run_migration
+            run_migration()
+            import setup_super_admin
+            print("[DATABASE] Database initialization completed successfully.")
+        except Exception as e:
+            print(f"[DATABASE] Initialization error (non-fatal): {e}")
+
+# Ensure DB initialized on module import
+ensure_db_initialized()
+
+# Expose app at module level for WSGI servers (Gunicorn, uWSGI, Render)
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
+

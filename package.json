@@ -1,0 +1,12 @@
+{
+  "name": "smart-sdg-framework",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart SDG Monitoring Framework",
+  "scripts": {
+    "start": "gunicorn app:app --bind 0.0.0.0:${PORT:-5000} || python app.py",
+    "build": "pip install -r requirements.txt && cd client && npm install && npm run build",
+    "client:dev": "npm --prefix client dev",
+    "client:build": "npm --prefix client run build"
+  }
+}
