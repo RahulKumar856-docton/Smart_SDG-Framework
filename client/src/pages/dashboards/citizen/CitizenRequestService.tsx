@@ -129,6 +129,30 @@ export default function CitizenRequestService() {
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ward / District <span className="text-red-500">*</span></label>
+                <select 
+                  required
+                  value={(form as any).ward || ''} 
+                  onChange={e => setForm({...form, ward: e.target.value} as any)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-teal-500 outline-none text-sm bg-white"
+                >
+                  <option value="">Select Ward</option>
+                  {[1,2,3,4,5,6,7,8,9,10].map(w => <option key={w} value={`Ward ${w}`}>Ward {w}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Landmark (Optional)</label>
+                <input 
+                  type="text" placeholder="e.g. Near Community Hall"
+                  value={(form as any).landmark || ''} 
+                  onChange={e => setForm({...form, landmark: e.target.value} as any)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-teal-500 outline-none text-sm bg-gray-50 focus:bg-white"
+                />
+              </div>
+            </div>
+
             <div className="md:col-span-2">
               <MapLocationPicker 
                 onLocationSelect={(lat, lng, address) => {

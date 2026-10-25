@@ -10,8 +10,12 @@ def calculate_kpi_score(current, target):
     return min(100.0, achievement)
 
 def _get_project_dates(cursor, project_id):
-    cursor.execute("SELECT start_date, expected_end_date, updated_at FROM projects WHERE id = ?", (project_id,))
-    row = cursor.fetchone()
+    try:
+        cursor.execute("SELECT start_date, expected_completion FROM projects WHERE id = ?", (project_id,))
+        row = cursor.fetchone()
+    except:
+        row = None
+        
     if not row:
         return None, None
     try:
@@ -20,7 +24,7 @@ def _get_project_dates(cursor, project_id):
         start_date = None
         
     try:
-        end_date = datetime.strptime(str(row['expected_end_date'])[:10], "%Y-%m-%d") if row.get('expected_end_date') else None
+        end_date = datetime.strptime(str(row['expected_completion'])[:10], "%Y-%m-%d") if row.get('expected_completion') else None
     except:
         end_date = None
         
@@ -164,7 +168,7 @@ def calculate_data_confidence(project, citizen, verification, dq_score):
 
 def calculate_project_sdg_scores(cursor, project_id):
     cursor.execute("""
-        SELECT pk.id, pk.kpi_id, pk.current_value, k.target_value, k.weight, k.sdg_id 
+        SELECT pk.id, pk.kpi_id, k.current_value, k.target_value, k.weight, k.sdg_id 
         FROM project_kpis pk
         JOIN kpis k ON pk.kpi_id = k.id
         WHERE pk.project_id = ?
@@ -213,9 +217,12 @@ def calculate_impact_index(project_id):
         return None
         
     # Get Data Quality Score
-    cursor.execute("SELECT data_confidence FROM projects WHERE id = ?", (project_id,))
-    dq = cursor.fetchone()
-    dq_score = dq['data_confidence'] if dq and dq['data_confidence'] else 50
+    try:
+        cursor.execute("SELECT data_confidence_score FROM projects WHERE id = ?", (project_id,))
+        dq = cursor.fetchone()
+        dq_score = dq['data_confidence_score'] if dq and dq['data_confidence_score'] else 50
+    except:
+        dq_score = 50
     
     # 1. Output Metrics
     progress = float(p.get('progress_percentage') or 0)

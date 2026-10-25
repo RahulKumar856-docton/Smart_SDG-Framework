@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, MapPin, Search, AlertCircle, ArrowRight } from 'lucide-react';
+import { FileText, MapPin, Search, AlertCircle, ArrowRight, Filter, Calendar } from 'lucide-react';
 import axios from 'axios';
 
 export default function CitizenReportsList() {
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [severityFilter, setSeverityFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All Time');
   
   useEffect(() => {
     fetchReports();
@@ -47,6 +52,33 @@ export default function CitizenReportsList() {
     }
   };
 
+  const filteredReports = reports.filter((req: any) => {
+    if (statusFilter !== 'All' && req.status !== statusFilter) return false;
+    if (severityFilter !== 'All' && req.severity !== severityFilter) return false;
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      if (!req.title?.toLowerCase().includes(term) && !req.report_id_code?.toLowerCase().includes(term)) {
+        return false;
+      }
+    }
+    
+    if (dateFilter !== 'All Time') {
+      const date = new Date(req.created_at);
+      const now = new Date();
+      if (dateFilter === 'Today' && date.toDateString() !== now.toDateString()) return false;
+      if (dateFilter === 'Last 7 Days') {
+        const diff = now.getTime() - date.getTime();
+        if (diff > 7 * 24 * 60 * 60 * 1000) return false;
+      }
+      if (dateFilter === 'This Month') {
+        if (date.getMonth() !== now.getMonth() || date.getFullYear() !== now.getFullYear()) return false;
+      }
+    }
+    
+    return true;
+  });
+
   return (
     <div className="max-w-6xl mx-auto py-8">
       
@@ -62,6 +94,60 @@ export default function CitizenReportsList() {
         </Link>
       </div>
 
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input 
+            type="text" 
+            placeholder="Search reports by ID or title..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
+          />
+        </div>
+        <div className="relative">
+          <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <select 
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none appearance-none bg-white"
+          >
+            <option value="All">All Statuses</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="INVESTIGATION">Investigating</option>
+            <option value="ACTION_IN_PROGRESS">Action In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+          </select>
+        </div>
+        <div className="relative">
+          <AlertCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <select 
+            value={severityFilter}
+            onChange={e => setSeverityFilter(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none appearance-none bg-white"
+          >
+            <option value="All">All Severities</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+        <div className="relative">
+          <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <select 
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none appearance-none bg-white"
+          >
+            <option value="All Time">All Time</option>
+            <option value="Today">Today</option>
+            <option value="Last 7 Days">Last 7 Days</option>
+            <option value="This Month">This Month</option>
+          </select>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         
         {error && (
@@ -70,26 +156,15 @@ export default function CitizenReportsList() {
           </div>
         )}
 
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search reports by ID or title..." 
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
-            />
-          </div>
-        </div>
-
         {loading ? (
           <div className="p-10 text-center text-gray-500">Loading reports...</div>
-        ) : reports.length === 0 ? (
+        ) : filteredReports.length === 0 ? (
           <div className="p-16 text-center flex flex-col items-center">
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
               <AlertCircle className="w-8 h-8 text-red-300" />
             </div>
-            <h3 className="font-bold text-gray-900 mb-2">No reports yet</h3>
-            <p className="text-gray-500 mb-6">You haven't reported any issues yet.</p>
+            <h3 className="font-bold text-gray-900 mb-2">No reports found</h3>
+            <p className="text-gray-500 mb-6">No issues match the selected filters.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -104,7 +179,7 @@ export default function CitizenReportsList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {reports.map((req: any) => (
+                {filteredReports.map((req: any) => (
                   <tr key={req.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 align-top">
                       <span className="font-mono text-sm font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{req.report_id_code}</span>

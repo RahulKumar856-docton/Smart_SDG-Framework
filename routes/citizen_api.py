@@ -201,7 +201,7 @@ def submit_request():
         cursor.execute("INSERT INTO request_updates (request_id, user_id, status_change, remarks) VALUES (?, ?, 'SUBMITTED', 'Request submitted by citizen')", (request_id, citizen_id))
         
         # Audit Log
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, description) VALUES (?, 'REQUEST_CREATED', 'Citizen Request', ?, 'Citizen submitted a new request')", (citizen_id, request_id))
+        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'REQUEST_CREATED', 'Citizen Request', ?, 'Citizen submitted a new request')", (citizen_id, request_id))
         
         conn.commit()
         
@@ -288,7 +288,7 @@ def verify_request(id):
         
         cursor.execute("INSERT INTO request_updates (request_id, user_id, status_change, remarks) VALUES (?, ?, ?, ?)", (id, citizen_id, verification_status, feedback))
         
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, description) VALUES (?, 'REQUEST_VERIFIED', 'Citizen Request', ?, ?)", (citizen_id, id, f"Citizen verified request as {verification_status}"))
+        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'REQUEST_VERIFIED', 'Citizen Request', ?, ?)", (citizen_id, id, f"Citizen verified request as {verification_status}"))
         
         conn.commit()
         return jsonify({'success': True, 'message': f'Request marked as {verification_status}.'})
@@ -324,7 +324,7 @@ def reopen_request(id):
         
         cursor.execute("INSERT INTO request_updates (request_id, user_id, status_change, remarks) VALUES (?, ?, 'REOPENED', ?)", (id, citizen_id, reason))
         
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, description) VALUES (?, 'REQUEST_REOPENED', 'Citizen Request', ?, 'Citizen reopened the request')", (citizen_id, id))
+        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'REQUEST_REOPENED', 'Citizen Request', ?, 'Citizen reopened the request')", (citizen_id, id))
         
         conn.commit()
         
@@ -365,7 +365,7 @@ def submit_feedback(id):
             
         cursor.execute("INSERT INTO citizen_feedback (request_id, rating, feedback) VALUES (?, ?, ?)", (id, rating, feedback))
         
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, description) VALUES (?, 'FEEDBACK_SUBMITTED', 'Citizen Request', ?, 'Citizen submitted feedback')", (citizen_id, id))
+        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'FEEDBACK_SUBMITTED', 'Citizen Request', ?, 'Citizen submitted feedback')", (citizen_id, id))
         
         conn.commit()
         return jsonify({'success': True, 'message': 'Feedback submitted successfully.'})
@@ -483,7 +483,7 @@ def submit_report():
         cursor.execute("INSERT INTO report_updates (report_id, user_id, status_change, remarks) VALUES (?, ?, 'SUBMITTED', 'Report submitted by citizen')", (report_id, citizen_id))
         
         # Audit Log
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, description) VALUES (?, 'REPORT_CREATED', 'Citizen Report', ?, 'Citizen submitted a new report')", (citizen_id, report_id))
+        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'REPORT_CREATED', 'Citizen Report', ?, 'Citizen submitted a new report')", (citizen_id, report_id))
         
         conn.commit()
         
@@ -946,4 +946,205 @@ def citizen_mark_read(conv_id):
 def citizen_unread_count():
     from routes.api_messages import get_unread_count
     return get_unread_count()
+
+# ==========================================
+# AI Assistant Endpoints
+# ==========================================
+
+import re
+import datetime
+
+@citizen_api_bp.route('/assistant/parse', methods=['POST'])
+@citizen_api_required
+def assistant_parse():
+    data = request.get_json()
+    text = data.get('text', '').lower()
+    context = data.get('context', {})
+    
+    if not text:
+        return jsonify({'success': False, 'message': 'Please provide some text.'}), 400
+        
+    # Intent Detection
+    greetings = ['hi', 'hello', 'hey', 'hii', 'hiii', 'heyy', 'good morning', 'good afternoon', 'good evening', 'thanks', 'thank you', 'namaste']
+    is_greeting = text in greetings or text.strip() in greetings or bool(re.match(r'^(hi+|hey+|hello+|namaste|hola)\b', text.strip())) or (len(text.split()) < 3 and any(g in text for g in greetings))
+    if is_greeting:
+        if 'thank' in text:
+            return jsonify({'success': True, 'intent': 'THANK_YOU', 'message': "You're welcome! 😊 I'm here if you need any help with municipal services."})
+        return jsonify({
+            'success': True, 
+            'intent': 'GREETING', 
+            'message': "Hello! 👋 I am your AI Municipal Assistant. I can help you report civic issues, check request status, find municipal services, or answer questions about city departments. How can I assist you today?"
+        })
+        
+    status_keywords = ['status', 'my complaints', 'my requests', 'track']
+    if any(k in text for k in status_keywords):
+        return jsonify({
+            'success': True,
+            'intent': 'REQUEST_STATUS',
+            'message': 'Fetching your recent requests...'
+        })
+        
+    cancel_keywords = ['cancel', 'stop', 'nevermind']
+    if text in cancel_keywords or text == 'no':
+        return jsonify({
+            'success': True,
+            'intent': 'CANCELLATION',
+            'message': 'Okay, I have cancelled the current operation. Let me know if you need help with anything else.'
+        })
+
+    # General Questions about how to use the portal
+    how_to_keywords = ['how to report', 'how can i report', 'how to request', 'how can i request', 'how do i report', 'how do i request']
+    if any(k in text for k in how_to_keywords):
+        return jsonify({
+            'success': True,
+            'intent': 'GENERAL_QUESTION',
+            'message': "To report an issue or request a service, you can simply tell me what the problem is right here in the chat (e.g., 'Water is not coming in Ward 3'), or you can use the 'Report an Issue' form in the menu."
+        })
+
+    # Service Request / Issue Report Intent
+    category = context.get('category', None)
+    department_name = context.get('department_name', "Public Works")
+    department_id = context.get('department_id', 1)
+    priority = context.get('priority', "Medium")
+    duration = context.get('duration', None)
+    
+    if not category:
+        if "water" in text or "pipe" in text or "varala" in text:
+            category = "Water Supply"
+            department_name = "Water Supply"
+            department_id = 3
+        elif "light" in text or "street" in text:
+            category = "Street Lighting"
+        elif "road" in text or "pothole" in text or "damage" in text:
+            category = "Road Damage"
+        elif "garbage" in text or "waste" in text or "collect" in text:
+            category = "Waste Management"
+            department_name = "Sanitation"
+            department_id = 2
+        else:
+            # General fallback if no clear issue is detected
+            return jsonify({
+                'success': True,
+                'intent': 'GENERAL_QUESTION',
+                'message': "I'm not sure I understood that. You can tell me about a municipal issue (e.g., 'no water in ward 3'), ask about a service, or check an existing request."
+            })
+            
+    # Location Extraction
+    ward = context.get('ward', None)
+    if not ward:
+        ward_match = re.search(r'ward\s*(\d+)', text)
+        if ward_match:
+            ward = f"Ward {ward_match.group(1)}"
+        elif re.search(r'\b\d+(?:st|nd|rd|th)?\s+ward\b', text):
+            match = re.search(r'\b(\d+)(?:st|nd|rd|th)?\s+ward\b', text)
+            ward = f"Ward {match.group(1)}"
+            
+    # Duration / Priority
+    if "day" in text or "urgent" in text or "emergency" in text or "varala" in text:
+        priority = "High"
+        duration_match = re.search(r'(\d+)\s*days?', text)
+        if duration_match:
+            duration = f"{duration_match.group(1)} days"
+            
+    if not ward:
+        return jsonify({
+            'success': True,
+            'intent': 'MISSING_LOCATION',
+            'message': f"I can help you report this {category.lower()} issue. Which ward or area is affected?",
+            'context': {
+                'category': category,
+                'department_id': department_id,
+                'department_name': department_name,
+                'priority': priority,
+                'original_text': context.get('original_text', text)
+            }
+        })
+        
+    if not duration and not context.get('duration_asked'):
+        return jsonify({
+            'success': True,
+            'intent': 'MISSING_DURATION',
+            'message': f"Thank you. How long has this {category.lower()} issue been happening?",
+            'context': {
+                'category': category,
+                'ward': ward,
+                'department_id': department_id,
+                'department_name': department_name,
+                'priority': priority,
+                'original_text': context.get('original_text', text),
+                'duration_asked': True
+            }
+        })
+
+    return jsonify({
+        'success': True,
+        'intent': 'SERVICE_REQUEST_CONFIRMATION',
+        'message': f'I have understood the issue. Would you like me to register this request?',
+        'parsed_data': {
+            'category': category,
+            'ward': ward,
+            'location': ward,
+            'duration': duration or "Unknown",
+            'priority': priority,
+            'department_id': department_id,
+            'department_name': department_name,
+            'original_text': context.get('original_text', text)
+        }
+    })
+
+@citizen_api_bp.route('/assistant/create-request', methods=['POST'])
+@citizen_api_required
+def assistant_create_request():
+    data = request.get_json()
+    citizen_id = session['user_id']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Generate ID
+        import uuid
+        req_code = f"SR-{datetime.datetime.now().year}-{str(uuid.uuid4().int)[:5]}"
+        
+        cursor.execute("""
+            INSERT INTO citizen_requests (
+                citizen_id, title, category, description, ward, location, priority, 
+                department_id, request_id_code, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED')
+        """, (
+            citizen_id, 
+            f"{data.get('category')} Issue (AI Assisted)", 
+            data.get('category'),
+            data.get('description'),
+            data.get('ward'),
+            data.get('location'),
+            data.get('priority'),
+            data.get('department_id'),
+            req_code
+        ))
+        
+        request_id = cursor.lastrowid
+        
+        # Add timeline entry
+        cursor.execute("""
+            INSERT INTO request_updates (request_id, user_id, status, description)
+            VALUES (?, ?, 'SUBMITTED', 'Request created via AI Assistant.')
+        """, (request_id, citizen_id))
+        
+        # Also create a notification for the system
+        cursor.execute("""
+            INSERT INTO notifications (user_id, type, title, message, reference_id, reference_type)
+            SELECT id, 'NEW_REQUEST', 'New Request via AI', ?, ?, 'request'
+            FROM users WHERE role_id = 1
+        """, (f"AI created request {req_code} for {data.get('category')}", request_id))
+
+        conn.commit()
+        return jsonify({'success': True, 'request_id': req_code})
+    except Exception as e:
+        print("AI Create Request Error:", e)
+        conn.rollback()
+        return jsonify({'success': False, 'message': 'Failed to create request'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 

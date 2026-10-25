@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -91,6 +91,10 @@ export const citizenApi = {
         'Content-Type': 'multipart/form-data'
       }
     });
+    return res.data;
+  },
+  verifyRequest: async (id: string | number, status: string, feedback?: string) => {
+    const res = await apiClient.post(`/citizen-requests/${id}/verify`, { status, feedback });
     return res.data;
   },
   // Settings API

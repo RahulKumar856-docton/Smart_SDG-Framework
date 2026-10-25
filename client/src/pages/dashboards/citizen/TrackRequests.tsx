@@ -166,7 +166,7 @@ export default function TrackRequests() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Link to={`/citizen/requests/${req.id}`} className="inline-flex items-center text-teal-600 hover:text-teal-800 font-medium bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors">
+                      <Link to={`/citizen/services/${req.id}`} className="inline-flex items-center text-teal-600 hover:text-teal-800 font-medium bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors">
                         View Details
                       </Link>
                     </td>

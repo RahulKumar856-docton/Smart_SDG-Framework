@@ -189,7 +189,7 @@ def add_measurement(kpi_id):
         # Update KPI
         cursor.execute("""
             UPDATE kpis 
-            SET current_value = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            SET current_value = ?, status = ?
             WHERE id = ?
         """, (new_value, new_status, kpi_id))
         

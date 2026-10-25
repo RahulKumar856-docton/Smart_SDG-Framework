@@ -74,17 +74,35 @@ export default function CitizenLayout() {
       ]
     },
     {
-      name: 'SERVICES',
+      name: 'AI SERVICES',
       items: [
-        { path: '/citizen/request-service', icon: FileText, label: 'Request a Service' },
-        { path: '/citizen/services', icon: Activity, label: 'My Service Requests' }
+        { path: '/citizen/assistant', icon: MessageSquare, label: 'AI Municipal Assistant' }
       ]
     },
     {
-      name: 'REPORTS',
+      name: 'SERVICES',
       items: [
+        { path: '/citizen/request-service', icon: FileText, label: 'Request a Service' },
         { path: '/citizen/report', icon: AlertCircle, label: 'Report an Issue' },
-        { path: '/citizen/reports', icon: FileText, label: 'My Reports' }
+        { path: '/citizen/municipal-services', icon: Activity, label: 'Municipal Services' },
+        { path: '/citizen/announcements', icon: Bell, label: 'Announcements' }
+      ]
+    },
+    {
+      name: 'MY ACTIVITY',
+      items: [
+        { path: '/citizen/services', icon: FileText, label: 'My Service Requests' },
+        { path: '/citizen/reports', icon: AlertCircle, label: 'My Reports' },
+        { path: '/citizen/history', icon: Activity, label: 'Request History' },
+        { path: '/citizen/feedback', icon: MessageSquare, label: 'Feedback' }
+      ]
+    },
+    {
+      name: 'CITY',
+      items: [
+        { path: '/citizen/map', icon: MapPin, label: 'Municipal Map' },
+        { path: '/citizen/nearby', icon: Map, label: 'Nearby Issues' },
+        { path: '/citizen/ward-info', icon: LayoutDashboard, label: 'Ward Information' }
       ]
     },
     {
@@ -92,12 +110,6 @@ export default function CitizenLayout() {
       items: [
         { path: '/citizen/notifications', icon: Bell, label: 'Notifications', badge: unreadCount > 0 ? unreadCount : null },
         { path: '/citizen/messages', icon: MessageSquare, label: 'Messages', badge: unreadMessagesCount > 0 ? unreadMessagesCount : null }
-      ]
-    },
-    {
-      name: 'LOCATION',
-      items: [
-        { path: '/citizen/map', icon: MapPin, label: 'Municipal Map' }
       ]
     },
     {
@@ -168,9 +180,9 @@ export default function CitizenLayout() {
                           >
                             <Icon className={`w-5 h-5 mr-3 ${active ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'}`} />
                             {item.label}
-                            {item.badge && (
+                            {(item as any).badge && (
                               <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                {item.badge}
+                                {(item as any).badge}
                               </span>
                             )}
                           </Link>

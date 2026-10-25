@@ -223,7 +223,7 @@ def run_data_quality_scan():
         # ==========================================
         # 5. SCAN OFFICERS (Users)
         # ==========================================
-        cursor.execute("SELECT * FROM users WHERE role = 'Officer'")
+        cursor.execute("SELECT * FROM users WHERE role_id = 2")
         officers = cursor.fetchall()
         for o in officers:
             records_checked += 1

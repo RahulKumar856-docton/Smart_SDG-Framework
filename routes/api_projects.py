@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify
 from config import get_db_connection
 from services.notification_service import broadcast_notification_to_role, create_notification
 from services.settings_service import SettingsService
+from ml.officer_assignment import predict_best_officer
 
 api_projects_bp = Blueprint('api_projects', __name__)
 
@@ -40,6 +41,26 @@ def get_all_projects():
         ORDER BY p.created_at DESC
     """)
     projects = cursor.fetchall()
+    
+    # Fetch SDGs for projects
+    cursor.execute("""
+        SELECT ps.project_id, s.id as sdg_id, s.name as sdg_name, s.color as sdg_color
+        FROM project_sdgs ps
+        JOIN sdgs s ON ps.sdg_id = s.id
+    """)
+    sdgs = cursor.fetchall()
+    
+    # Map SDGs to projects
+    sdgs_map = {}
+    for row in sdgs:
+        pid = row['project_id']
+        if pid not in sdgs_map:
+            sdgs_map[pid] = []
+        sdgs_map[pid].append({'id': row['sdg_id'], 'name': row['sdg_name'], 'color': row['sdg_color']})
+        
+    for p in projects:
+        p['sdgs'] = sdgs_map.get(p['id'], [])
+        
     cursor.close()
     conn.close()
     return jsonify({'success': True, 'data': projects})
@@ -82,6 +103,19 @@ def create_project():
             data.get('location'), data.get('start_date')
         ))
         project_id = cursor.lastrowid
+        
+        # Handle SDGs
+        sdg_ids = data.get('sdg_ids', [])
+        if sdg_ids:
+            for sdg_id in sdg_ids:
+                cursor.execute("INSERT INTO project_sdgs (project_id, sdg_id) VALUES (?, ?)", (project_id, sdg_id))
+                
+        # ML-based Officer Assignment
+        if data.get('department_id'):
+            manager_id = predict_best_officer(data.get('department_id'), sdg_ids)
+            if manager_id:
+                cursor.execute("UPDATE projects SET manager_id = ? WHERE id = ?", (manager_id, project_id))
+
         
         # Log audit if session user exists
         user_id = session.get('user_id')

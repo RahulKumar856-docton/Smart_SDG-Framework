@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, AlertCircle, ArrowLeft, Calendar, MapPin, Building, BarChart, CheckCircle, ShieldAlert, FileText, ClipboardList } from 'lucide-react';
+import { RefreshCw, AlertCircle, ArrowLeft, Calendar, MapPin, Building, BarChart, CheckCircle, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 
 export default function OfficerProjectDetails() {

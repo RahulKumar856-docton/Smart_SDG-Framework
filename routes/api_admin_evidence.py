@@ -46,13 +46,14 @@ def get_evidence():
     
     query = """
         SELECT e.*, 
-               u.full_name as submitter_name, u.role as submitter_role, u.department_id as submitter_dept,
+               u.full_name as submitter_name, r.name as submitter_role, u.department_id as submitter_dept,
                p.project_name, 
                p.priority as project_priority,
                i.id as inspection_id,
                cr.id as citizen_request_id
         FROM evidence e
         LEFT JOIN users u ON e.uploaded_by = u.id
+        LEFT JOIN roles r ON u.role_id = r.id
         LEFT JOIN projects p ON e.project_id = p.id
         LEFT JOIN field_inspections i ON e.inspection_id = i.id
         LEFT JOIN feedback cr ON e.request_id = cr.id
@@ -79,13 +80,14 @@ def get_evidence_detail(id):
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT e.*, 
-               u.full_name as submitter_name, u.role as submitter_role, u.department_id as submitter_dept,
+               u.full_name as submitter_name, r.name as submitter_role, u.department_id as submitter_dept,
                v.full_name as verified_by_name,
                p.project_name, d.name as project_department, p.status as project_status,
                i.id as inspection_id, i.status as inspection_status,
                cr.category as request_category, cr.status as request_status
         FROM evidence e
         LEFT JOIN users u ON e.uploaded_by = u.id
+        LEFT JOIN roles r ON u.role_id = r.id
         LEFT JOIN users v ON e.verified_by = v.id
         LEFT JOIN projects p ON e.project_id = p.id
         LEFT JOIN departments d ON p.department_id = d.id

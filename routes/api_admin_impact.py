@@ -8,7 +8,7 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('role', '').upper() != 'ADMIN':
+        if 'user_id' not in session or session.get('role', '').upper() not in ['ADMIN', 'SUPER_ADMIN']:
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -85,7 +85,7 @@ def get_projects():
     cursor = conn.cursor(dictionary=True)
     
     cursor.execute("""
-        SELECT p.id, p.project_name, d.name as dept_name, p.status, p.progress_percentage
+        SELECT p.id, p.project_name, d.name as dept_name, p.status, p.reported_progress as progress_percentage
         FROM projects p
         LEFT JOIN departments d ON p.department_id = d.id
     """)

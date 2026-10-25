@@ -9,7 +9,7 @@ def admin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('role', '').upper() != 'ADMIN':
+        if 'user_id' not in session or session.get('role', '').upper() not in ['ADMIN', 'SUPER_ADMIN']:
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -63,7 +63,7 @@ def get_summary():
         except:
             pass
             
-        cursor.execute("SELECT count(*) as c FROM users WHERE role = 'Officer'")
+        cursor.execute("SELECT count(*) as c FROM users WHERE role_id = 2")
         mod_dict['Officer']['records'] = cursor.fetchone()['c']
         
         # Calculate crude module scores

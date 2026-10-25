@@ -5,7 +5,7 @@ import { adminApi } from '../../services/adminApi';
 import { 
   LayoutDashboard, FolderKanban, Users, Activity, 
   Map, FileText, Settings, Bell, Search, LogOut, 
-  Menu, X, AlertTriangle, ShieldCheck, Database, FileDigit, Globe, Target
+  Menu, X, AlertTriangle, ShieldCheck, Database, FileDigit, Globe, Target, FileCheck
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -55,45 +55,40 @@ export default function AdminLayout() {
     {
       title: 'OVERVIEW',
       items: [
-        { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' }
+        { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Admin Dashboard' }
       ]
     },
     {
-      title: 'MONITORING',
+      title: 'MANAGEMENT',
       items: [
-        { path: '/admin/projects', icon: FolderKanban, label: 'Projects' },
-        { path: '/admin/departments', icon: Users, label: 'Departments' },
-        { path: '/admin/sdg', icon: Target, label: 'Performance & KPIs' }
+        { path: '/admin/users', icon: Users, label: 'Authorized Users' },
+        { path: '/admin/departments', icon: FolderKanban, label: 'Departments & Services' },
+        { path: '/admin/communications', icon: Bell, label: 'Communications' }
       ]
     },
     {
       title: 'OPERATIONS',
       items: [
-        { path: '/admin/citizen-requests', icon: Activity, label: 'Citizen Requests' },
-        { path: '/admin/inspections', icon: FileCheckIcon, label: 'Field Inspections' },
-        { path: '/admin/evidence', icon: FileDigit, label: 'Evidence Verification' }
+        { path: '/admin/citizen-requests', icon: Activity, label: 'Report Overview' },
+        { path: '/admin/sdg', icon: Target, label: 'SLA Monitoring' },
+        { path: '/admin/inspections', icon: FileCheck, label: 'Operational Activity' },
+        { path: '/admin/evidence', icon: FileDigit, label: 'Evidence Verification' },
+        { path: '/admin/gis', icon: Map, label: 'Municipal GIS Map' }
       ]
     },
     {
-      title: 'INTELLIGENCE',
+      title: 'INTELLIGENCE & REPORTING',
       items: [
+        { path: '/admin/analytics', icon: Activity, label: 'Operational Analytics' },
+        { path: '/admin/risk-ai', icon: AlertTriangle, label: 'Risk Analysis' },
         { path: '/admin/data-quality', icon: Database, label: 'Data Quality' },
         { path: '/admin/impact', icon: Globe, label: 'Impact Analysis' },
-        { path: '/admin/risk-ai', icon: AlertTriangle, label: 'Risk & AI' }
+        { path: '/admin/reports', icon: FileText, label: 'Reports Center' }
       ]
     },
     {
-      title: 'REPORTING',
+      title: 'ACCOUNT & SYSTEM',
       items: [
-        { path: '/admin/gis', icon: Map, label: 'GIS Map' },
-        { path: '/admin/reports', icon: FileText, label: 'Reports' },
-        { path: '/admin/audit-logs', icon: FileText, label: 'Audit Logs' }
-      ]
-    },
-    {
-      title: 'SYSTEM',
-      items: [
-        { path: '/admin/officers', icon: ShieldCheck, label: 'Officer Management' },
         { path: '/admin/notifications', icon: Bell, label: 'Notifications' },
         { path: '/admin/settings', icon: Settings, label: 'Settings' }
       ]
@@ -188,10 +183,12 @@ export default function AdminLayout() {
 
             <div className="flex items-center border-l border-gray-200 pl-4 ml-2">
               <div className="text-right mr-3 hidden sm:block">
-                <p className="text-sm font-bold text-slate-900">{user?.username}</p>
-                <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Administrator</p>
+                <p className="text-sm font-bold text-slate-900">{user?.full_name || user?.username || 'Administrator'}</p>
+                <p className="text-xs font-bold tracking-wide uppercase text-indigo-600">
+                  {user?.role === 'SUPER_ADMIN' || user?.username === 'superadmin' ? '👑 Super Admin' : 'Administrator'}
+                </p>
               </div>
-              <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
+              <div className={`w-9 h-9 rounded-full ${user?.role === 'SUPER_ADMIN' || user?.username === 'superadmin' ? 'bg-amber-500' : 'bg-blue-600'} text-white flex items-center justify-center font-bold shadow-sm`}>
                 {user?.username?.charAt(0).toUpperCase() || 'A'}
               </div>
               <button onClick={handleLogout} className="ml-4 text-slate-400 hover:text-red-600 transition-colors" title="Logout">
@@ -208,6 +205,7 @@ export default function AdminLayout() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            className="w-full h-full"
           >
             <Outlet />
           </motion.div>

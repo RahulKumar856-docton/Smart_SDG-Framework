@@ -131,6 +131,17 @@ export default function RequestDetails() {
     'REOPENED': 'bg-purple-100 text-purple-700'
   };
 
+  const getStepProgress = (status: string) => {
+    if (['REJECTED'].includes(status)) return -1;
+    if (['SUBMITTED', 'UNDER_REVIEW'].includes(status)) return 1;
+    if (['ASSIGNED', 'REOPENED'].includes(status)) return 2;
+    if (['IN_PROGRESS', 'REWORK'].includes(status)) return 3;
+    if (['PENDING_VERIFICATION', 'RESOLVED'].includes(status)) return 4;
+    return 0;
+  };
+  
+  const currentStep = getStepProgress(req.status);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-10">
       
@@ -184,6 +195,72 @@ export default function RequestDetails() {
         <div className={`p-4 rounded-lg flex items-start border ${message.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
           {message.type === 'success' ? <CheckCircle className="w-5 h-5 mr-3 mt-0.5" /> : <ShieldAlert className="w-5 h-5 mr-3 mt-0.5" />}
           <p className="font-medium text-sm">{message.text}</p>
+        </div>
+      )}
+
+      {/* Progress Tracker Stepper */}
+      {currentStep > 0 && req.status !== 'REJECTED' && (
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+          <h3 className="font-bold text-gray-900 mb-8 flex items-center">
+            <CheckCircle className="w-5 h-5 mr-2 text-teal-600" />
+            Request Progress
+          </h3>
+          <div className="relative mb-4 px-4 md:px-8">
+            <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded"></div>
+            <div 
+              className="absolute top-1/2 left-0 h-1 bg-teal-500 -translate-y-1/2 rounded transition-all duration-700 ease-in-out" 
+              style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
+            ></div>
+            <div className="relative flex justify-between z-10">
+              {[
+                { step: 1, label: 'Submitted', desc: 'Request received' },
+                { step: 2, label: 'Assigned', desc: 'Officer assigned' },
+                { step: 3, label: 'In Progress', desc: 'Work started' },
+                { step: 4, label: 'Resolved', desc: 'Work completed' }
+              ].map((s) => (
+                <div key={s.step} className="flex flex-col items-center w-8">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300 ${
+                    currentStep >= s.step 
+                      ? 'bg-teal-500 text-white shadow-md ring-4 ring-teal-50' 
+                      : 'bg-white text-gray-400 border-2 border-gray-200'
+                  }`}>
+                    {currentStep > s.step ? <CheckCircle className="w-5 h-5" /> : s.step}
+                  </div>
+                  <div className="mt-3 text-center absolute -bottom-12 w-24 -ml-8">
+                    <div className={`text-sm font-bold ${currentStep >= s.step ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {s.label}
+                    </div>
+                    <div className="text-xs text-gray-500 hidden md:block mt-0.5">{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-12 pt-6 border-t border-gray-50">
+            {req.status === 'IN_PROGRESS' && (
+              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg flex items-start">
+                <Clock className="w-5 h-5 text-indigo-500 mr-3 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-indigo-900">Work is currently in progress</h4>
+                  <p className="text-sm text-indigo-700 mt-1">
+                    The assigned officer is actively working on this issue. Check the Request Timeline below for specific updates, completion estimates, and photos of the work being done.
+                  </p>
+                </div>
+              </div>
+            )}
+            {req.status === 'ASSIGNED' && (
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start">
+                <Clock className="w-5 h-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-blue-900">Officer Assigned</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    An officer has been assigned and is scheduled to begin work soon. You will be notified once work starts.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

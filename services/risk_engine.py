@@ -9,7 +9,7 @@ def evaluate_project_risk(project_id):
     if not conn: return None
     
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+    cursor.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
     project = cursor.fetchone()
     
     if not project:
@@ -17,17 +17,17 @@ def evaluate_project_risk(project_id):
         conn.close()
         return None
         
-    cursor.execute("SELECT AVG(score) as avg_score FROM sdg_scores WHERE project_id = %s", (project_id,))
+    cursor.execute("SELECT AVG(score) as avg_score FROM sdg_scores WHERE project_id = ?", (project_id,))
     sdg_res = cursor.fetchone()
     avg_sdg = float(sdg_res['avg_score']) if sdg_res and sdg_res['avg_score'] else 0.0
     
     cursor.close()
     conn.close()
     
-    progress = float(project['progress_percentage'])
-    budget_alloc = float(project['allocated_budget'])
-    budget_spent = float(project['amount_spent'])
-    data_confidence = float(project.get('data_confidence', 0))
+    progress = float(project.get('reported_progress') or 0)
+    budget_alloc = float(project.get('budget') or 0)
+    budget_spent = float(budget_alloc * (progress / 100))
+    data_confidence = 50.0
     
     budget_utilization = (budget_spent / budget_alloc * 100) if budget_alloc > 0 else 0
     
@@ -85,9 +85,9 @@ def evaluate_project_risk(project_id):
         med_count += 1
         
     # 5. Deadline Risk (Simple heuristic)
-    if project.get('expected_end_date'):
+    if project.get('expected_completion'):
         try:
-            end_date = datetime.strptime(project['expected_end_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(project['expected_completion'], '%Y-%m-%d')
             days_left = (end_date - datetime.now()).days
             if days_left < 30 and progress < 80:
                 risk_profile['deadline_risk'] = 'HIGH'

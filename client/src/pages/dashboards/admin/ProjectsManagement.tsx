@@ -13,7 +13,7 @@ export default function ProjectsManagement() {
   
   // UI State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newProject, setNewProject] = useState({ project_name: '', department_id: '', status: 'PLANNED', budget: 0, priority: 'Medium' });
+  const [newProject, setNewProject] = useState({ project_name: '', department_id: '', status: 'PLANNED', budget: 0, priority: 'Medium', sdg_ids: [] as number[] });
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
@@ -141,6 +141,7 @@ export default function ProjectsManagement() {
                   <th className="p-4 font-semibold text-slate-600 text-sm">Project</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm">Department</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm">Status</th>
+                  <th className="p-4 font-semibold text-slate-600 text-sm">SDGs & Officer</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm">Progress</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -163,6 +164,19 @@ export default function ProjectsManagement() {
                       }`}>
                         {p.status}
                       </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                          <UserPlus className="w-3 h-3" />
+                          {p.manager_name || 'Unassigned (ML Pending)'}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {p.sdgs && p.sdgs.map((sdg: any) => (
+                            <span key={sdg.id} className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-sm" style={{ backgroundColor: sdg.color }}>SDG {sdg.id}</span>
+                          ))}
+                        </div>
+                      </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -247,6 +261,40 @@ export default function ProjectsManagement() {
                   <label className="text-sm font-semibold text-slate-700">Budget</label>
                   <input type="number" min="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" 
                     value={newProject.budget} onChange={e => setNewProject({...newProject, budget: Number(e.target.value)})} />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-sm font-semibold text-slate-700">Target SDGs</label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {[
+                      { id: 6, name: 'Clean Water and Sanitation', color: '#26bde2' },
+                      { id: 11, name: 'Sustainable Cities and Communities', color: '#fd9d24' },
+                      { id: 13, name: 'Climate Action', color: '#3f7e44' },
+                      { id: 15, name: 'Life on Land', color: '#56c02b' }
+                    ].map(sdg => {
+                      const isSelected = newProject.sdg_ids.includes(sdg.id);
+                      return (
+                        <button
+                          type="button"
+                          key={sdg.id}
+                          onClick={() => {
+                            setNewProject(prev => {
+                              const ids = prev.sdg_ids.includes(sdg.id) 
+                                ? prev.sdg_ids.filter(id => id !== sdg.id)
+                                : [...prev.sdg_ids, sdg.id];
+                              return { ...prev, sdg_ids: ids };
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            isSelected ? 'text-white border-transparent shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                          style={{ backgroundColor: isSelected ? sdg.color : undefined }}
+                        >
+                          {sdg.id}: {sdg.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Machine Learning will automatically allocate the best officer based on department and selected SDGs.</p>
                 </div>
               </div>
 

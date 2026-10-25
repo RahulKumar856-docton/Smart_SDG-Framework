@@ -6,6 +6,7 @@ import {
   ArrowRight, Shield, ShieldCheck, Activity, Search
 } from 'lucide-react';
 import { citizenApi } from '../../../services/citizenApi';
+import AICitizenAssistant from '../../../components/AICitizenAssistant';
 
 const getTimeBasedGreeting = (date: Date) => {
   const hours = date.getHours();
@@ -103,7 +104,18 @@ export default function CitizenDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN: AI Assistant */}
+        <div className="lg:col-span-1">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center border-b pb-2">
+            <Activity className="w-5 h-5 mr-2 text-indigo-600" /> AI Assistant
+          </h2>
+          <AICitizenAssistant />
+        </div>
+
+        {/* RIGHT COLUMN: Dashboard Stats */}
+        <div className="lg:col-span-2 space-y-8">
         
         {/* SERVICE REQUESTS SECTION */}
         <div className="space-y-6">
@@ -207,6 +219,7 @@ export default function CitizenDashboard() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>

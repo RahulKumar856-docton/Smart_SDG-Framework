@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, Loader2, ShieldCheck, Activity, BarChart3, Globe } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ShieldCheck, Activity, BarChart3, Globe, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -18,9 +18,20 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await axios.post('/api/auth/login', { username, password, expected_role: 'ADMIN' });
+      const res = await axios.post('/api/auth/login', { 
+        username: username.trim(), 
+        password: password.trim(), 
+        expected_role: 'ADMIN' 
+      }, { withCredentials: true });
+
       if (res.data.success) {
-        navigate('/admin/dashboard');
+        localStorage.setItem('user_data', JSON.stringify(res.data.data));
+        const userRole = (res.data.data?.role || '').toUpperCase();
+        if (userRole === 'SUPER_ADMIN') {
+          navigate('/system/dashboard');
+        } else {
+          navigate('/admin/dashboard');
+        }
       }
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
@@ -31,6 +42,12 @@ export default function AdminLogin() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickFill = (u: string, p: string) => {
+    setUsername(u);
+    setPassword(p);
+    setError('');
   };
 
   return (
@@ -50,33 +67,31 @@ export default function AdminLogin() {
 
         <div className="relative z-10">
           <div className="inline-block px-4 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold tracking-wider mb-8">
-            MUNICIPAL INTELLIGENCE PLATFORM
+            OPERATIONAL PLATFORM ADMINISTRATION
           </div>
-          <h1 className="text-5xl font-black mb-6 leading-tight">Evidence-Based Municipal Decision Making</h1>
+          <h1 className="text-5xl font-black mb-6 leading-tight">Municipal Administration & Operations</h1>
           <p className="text-slate-300 text-lg max-w-md leading-relaxed mb-12">
-            Monitor sustainable development projects, citizen requirements, field inspections, project performance and municipal risks from one central command center.
+            Manage municipal service delivery, citizen requests, authorized personnel, communications, and SLA performance indicators across city departments.
           </p>
 
           <div className="grid grid-cols-2 gap-6">
-            <div className="flex items-center text-slate-300"><ShieldCheck className="w-5 h-5 mr-3 text-teal-400" /> Secure Admin Access</div>
-            <div className="flex items-center text-slate-300"><Activity className="w-5 h-5 mr-3 text-teal-400" /> AI Risk Analysis</div>
-            <div className="flex items-center text-slate-300"><BarChart3 className="w-5 h-5 mr-3 text-teal-400" /> Data Quality</div>
-            <div className="flex items-center text-slate-300"><Globe className="w-5 h-5 mr-3 text-teal-400" /> Project Monitoring</div>
+            <div className="flex items-center text-slate-300"><ShieldCheck className="w-5 h-5 mr-3 text-teal-400" /> Operational Control</div>
+            <div className="flex items-center text-slate-300"><Activity className="w-5 h-5 mr-3 text-teal-400" /> SLA Monitoring</div>
+            <div className="flex items-center text-slate-300"><BarChart3 className="w-5 h-5 mr-3 text-teal-400" /> Department KPIs</div>
+            <div className="flex items-center text-slate-300"><Globe className="w-5 h-5 mr-3 text-teal-400" /> Service Coordination</div>
           </div>
         </div>
 
         <div className="relative z-10 mt-16 pt-8 border-t border-slate-700">
           <div className="flex justify-between items-center text-sm font-semibold text-slate-400">
-            <span>Goal 6</span>
-            <span>Goal 11</span>
-            <span>Goal 13</span>
-            <span>Goal 15</span>
+            <span>Goal 6 Clean Water</span>
+            <span>Goal 11 Sustainable Cities</span>
+            <span>Goal 13 Climate Action</span>
           </div>
           <div className="flex space-x-1 mt-3">
-            <div className="h-1 bg-blue-500 rounded-full w-1/4"></div>
-            <div className="h-1 bg-orange-500 rounded-full w-1/4"></div>
-            <div className="h-1 bg-green-600 rounded-full w-1/4"></div>
-            <div className="h-1 bg-green-400 rounded-full w-1/4"></div>
+            <div className="h-1 bg-blue-500 rounded-full w-1/3"></div>
+            <div className="h-1 bg-orange-500 rounded-full w-1/3"></div>
+            <div className="h-1 bg-green-600 rounded-full w-1/3"></div>
           </div>
         </div>
       </motion.div>
@@ -89,10 +104,30 @@ export default function AdminLogin() {
         className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white"
       >
         <div className="w-full max-w-md">
-          <div className="text-center mb-10">
-            <ShieldCheck className="w-12 h-12 text-slate-900 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Administrator Sign In</h2>
-            <p className="text-slate-500">Access the municipal command center.</p>
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 bg-blue-900 text-blue-200 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg border border-blue-800">
+              <ShieldCheck className="w-8 h-8 text-cyan-400" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Municipal Administrator Portal</h2>
+            <p className="text-slate-500 text-xs">Manage municipal operations, services, and field performance.</p>
+          </div>
+
+          {/* Quick Demo Credentials */}
+          <div className="mb-6 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center">
+              <Sparkles className="w-3 h-3 text-blue-500 mr-1" /> Quick Demo Login (Click to fill)
+            </div>
+            <button
+              type="button"
+              onClick={() => handleQuickFill('admin', 'password123')}
+              className="w-full p-2.5 text-left bg-white hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 rounded-lg transition-all group flex items-center justify-between"
+            >
+              <div>
+                <div className="font-bold text-xs text-slate-800 group-hover:text-blue-800">🛡️ Operational Administrator</div>
+                <div className="text-[10px] text-slate-500 font-mono">admin / password123</div>
+              </div>
+              <span className="text-xs text-blue-600 font-medium">Select</span>
+            </button>
           </div>
 
           {error && (
@@ -101,7 +136,7 @@ export default function AdminLogin() {
             </motion.div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Username or Email</label>
               <input 
@@ -154,6 +189,3 @@ export default function AdminLogin() {
     </div>
   );
 }
-
-// Adding a quick AlertCircle since it was missed in lucide-react imports above
-import { AlertCircle } from 'lucide-react';

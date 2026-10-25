@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -114,6 +114,36 @@ export const adminApi = {
 
   updateRequestStatus: async (id: string | number, data: { status: string, remarks?: string, evidence_path?: string }) => {
     const response = await apiClient.patch(`/admin/citizen-requests/${id}/status`, data);
+    return response.data;
+  },
+
+  verifyRequest: async (id: string | number) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/verify`);
+    return response.data;
+  },
+
+  rejectRequest: async (id: string | number, data: { reason: string }) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/reject`, data);
+    return response.data;
+  },
+
+  assignDepartment: async (id: string | number, data: { department_id: string | number, sla_days: number }) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/assign-department`, data);
+    return response.data;
+  },
+
+  escalateRequest: async (id: string | number, data: { level: number, reason: string }) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/escalate`, data);
+    return response.data;
+  },
+
+  verifyCompletion: async (id: string | number) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/verify-completion`);
+    return response.data;
+  },
+
+  rejectCompletion: async (id: string | number, data: { reason: string }) => {
+    const response = await apiClient.post(`/admin/citizen-requests/${id}/reject-completion`, data);
     return response.data;
   },
 
@@ -261,6 +291,30 @@ export const adminApi = {
   getImpactDepartments: async () => {
     const response = await apiClient.get('/admin/impact-analysis/departments');
     return response.data;
+  },
+
+  // Risk & AI
+  getRiskSummary: async () => {
+    const res = await axios.get('/api/admin/risk/summary', { withCredentials: true });
+    return res.data;
+  },
+  getRiskProjects: async () => {
+    const res = await axios.get('/api/admin/risk/projects', { withCredentials: true });
+    return res.data;
+  },
+  getRiskProjectDetails: async (id: number) => {
+    const res = await axios.get(`/api/admin/risk/projects/${id}`, { withCredentials: true });
+    return res.data;
+  },
+  
+  // AI Intelligence Center
+  getComplaintClusters: async () => {
+    const res = await axios.get('/api/ai-intelligence/complaint-clusters', { withCredentials: true });
+    return res.data;
+  },
+  getPriorityPredictions: async () => {
+    const res = await axios.get('/api/ai-intelligence/priority-predictions', { withCredentials: true });
+    return res.data;
   },
 
   // GIS Map

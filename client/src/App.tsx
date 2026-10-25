@@ -8,6 +8,9 @@ import CitizenDashboard from './pages/dashboards/citizen/CitizenDashboard';
 import CitizenRequestService from './pages/dashboards/citizen/CitizenRequestService';
 
 // Admin Pages
+import AdminUsers from './pages/dashboards/admin/AdminUsers';
+import AdminCommunications from './pages/dashboards/admin/AdminCommunications';
+import AdminAnalytics from './pages/dashboards/admin/AdminAnalytics';
 import AdminOfficers from './pages/dashboards/admin/AdminOfficers';
 import ProjectsManagement from './pages/dashboards/admin/ProjectsManagement';
 import DepartmentsManagement from './pages/dashboards/admin/DepartmentsManagement';
@@ -26,7 +29,23 @@ import AuditLogs from './pages/dashboards/admin/AuditLogs';
 import Notifications from './pages/dashboards/admin/Notifications';
 import Settings from './pages/dashboards/admin/Settings';
 
+// Super Admin / System Pages
+import SystemLayout from './components/layouts/SystemLayout';
+import SystemDashboard from './pages/system/SystemDashboard';
+import SystemUsers from './pages/system/SystemUsers';
+import SystemRolesPermissions from './pages/system/SystemRolesPermissions';
+import SystemDepartments from './pages/system/SystemDepartments';
+import SystemConfiguration from './pages/system/SystemConfiguration';
+import SystemAIConfiguration from './pages/system/SystemAIConfiguration';
+import SystemSecurity from './pages/system/SystemSecurity';
+import SystemAuditLogs from './pages/system/SystemAuditLogs';
+import SystemHealth from './pages/system/SystemHealth';
+import SystemAnalytics from './pages/system/SystemAnalytics';
+
+// Auth Pages
 import AdminLogin from './pages/auth/AdminLogin';
+import SystemLogin from './pages/auth/SystemLogin';
+import AuthorityLogin from './pages/auth/AuthorityLogin';
 import OfficerLogin from './pages/auth/OfficerLogin';
 import OfficerRegister from './pages/auth/OfficerRegister';
 import CitizenLogin from './pages/auth/CitizenLogin';
@@ -35,6 +54,7 @@ import CitizenRegister from './pages/auth/CitizenRegister';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/layouts/AdminLayout';
 import OfficerLayout from './components/layouts/OfficerLayout';
+import AuthorityLayout from './components/layouts/AuthorityLayout';
 
 import OfficerProjects from './pages/dashboards/officer/OfficerProjects';
 import OfficerProjectDetails from './pages/dashboards/officer/OfficerProjectDetails';
@@ -59,10 +79,26 @@ import CitizenMap from './pages/dashboards/citizen/CitizenMap';
 import CitizenMessages from './pages/dashboards/citizen/CitizenMessages';
 import CitizenSettings from './pages/dashboards/citizen/CitizenSettings';
 
+import AiAssistant from './pages/dashboards/citizen/AiAssistant';
+import MunicipalServices from './pages/dashboards/citizen/MunicipalServices';
+import Announcements from './pages/dashboards/citizen/Announcements';
+import RequestHistory from './pages/dashboards/citizen/RequestHistory';
+import Feedback from './pages/dashboards/citizen/Feedback';
+import NearbyIssues from './pages/dashboards/citizen/NearbyIssues';
+import WardInformation from './pages/dashboards/citizen/WardInformation';
+
 // New Report Pages
 import CitizenReportIssue from './pages/dashboards/citizen/CitizenReportIssue';
 import CitizenReportsList from './pages/dashboards/citizen/CitizenReportsList';
 import ReportDetails from './pages/dashboards/citizen/ReportDetails';
+
+// Authority Pages
+import AuthorityDashboard from './pages/dashboards/authority/AuthorityDashboard';
+import AuthorityReports from './pages/dashboards/authority/AuthorityReports';
+import AuthorityReportDetail from './pages/dashboards/authority/AuthorityReportDetail';
+import AuthorityOperations from './pages/dashboards/authority/AuthorityOperations';
+import AuthorityGIS from './pages/dashboards/authority/AuthorityGIS';
+import AuthorityAIInsights from './pages/dashboards/authority/AuthorityAIInsights';
 
 function App() {
   return (
@@ -73,7 +109,13 @@ function App() {
         {/* PUBLIC AUTH ROUTES */}
         <Route path="/login" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<AdminLogin />} />
-
+        <Route path="/system-access/login" element={<SystemLogin />} />
+        <Route path="/system/login" element={<Navigate to="/system-access/login" replace />} />
+        <Route path="/super-admin/login" element={<Navigate to="/system-access/login" replace />} />
+        <Route path="/super-admin" element={<Navigate to="/system/dashboard" replace />} />
+        <Route path="/super-admin/*" element={<Navigate to="/system/dashboard" replace />} />
+        
+        <Route path="/authority/login" element={<AuthorityLogin />} />
         <Route path="/officer/login" element={<OfficerLogin />} />
         <Route path="/officer/register" element={<OfficerRegister />} />
 
@@ -82,13 +124,44 @@ function App() {
 
         <Route path="/forgot-password" element={<div className="p-10">Forgot Password Placeholder</div>} />
 
-        {/* PROTECTED ADMIN ROUTES */}
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+        {/* PROTECTED SUPER ADMIN (SYSTEM ROOT) ROUTES */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+          <Route path="/system" element={<SystemLayout />}>
+            <Route index element={<Navigate to="/system/dashboard" replace />} />
+            <Route path="dashboard" element={<SystemDashboard />} />
+            <Route path="users" element={<SystemUsers />} />
+            <Route path="admin-accounts" element={<SystemUsers onlyAdmins={true} />} />
+            <Route path="roles-permissions" element={<SystemRolesPermissions />} />
+            <Route path="departments" element={<SystemDepartments />} />
+            <Route path="wards-services" element={<SystemDepartments />} />
+            <Route path="categories" element={<SystemDepartments />} />
+            <Route path="configuration" element={<SystemConfiguration />} />
+            <Route path="sla-policies" element={<SystemConfiguration />} />
+            <Route path="escalation-rules" element={<SystemConfiguration />} />
+            <Route path="ai-configuration" element={<SystemAIConfiguration />} />
+            <Route path="model-performance" element={<SystemAIConfiguration />} />
+            <Route path="integrations" element={<SystemAIConfiguration />} />
+            <Route path="security" element={<SystemSecurity />} />
+            <Route path="audit-logs" element={<SystemAuditLogs />} />
+            <Route path="access-history" element={<SystemSecurity />} />
+            <Route path="health" element={<SystemHealth />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<SystemConfiguration />} />
+            <Route path="analytics" element={<SystemAnalytics />} />
+            <Route path="*" element={<Navigate to="/system/dashboard" replace />} />
+          </Route>
+        </Route>
+
+        {/* PROTECTED OPERATIONAL ADMIN ROUTES */}
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']} />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="projects" element={<ProjectsManagement />} />
+            <Route path="users" element={<AdminUsers />} />
             <Route path="departments" element={<DepartmentsManagement />} />
+            <Route path="communications" element={<AdminCommunications />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="projects" element={<ProjectsManagement />} />
             <Route path="sdg" element={<PerformanceKPIs />} />
             <Route path="citizen-requests" element={<CitizenRequests />} />
             <Route path="citizen-requests/:id" element={<CitizenRequestDetails />} />
@@ -104,7 +177,9 @@ function App() {
             <Route path="officers" element={<AdminOfficers />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<div className="p-10">Module Not Found</div>} />
+            <Route path="super-admin" element={<Navigate to="/system/dashboard" replace />} />
+            <Route path="super-admin/*" element={<Navigate to="/system/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
         </Route>
 
@@ -139,18 +214,45 @@ function App() {
             <Route path="request-service" element={<CitizenRequestService />} />
             <Route path="services" element={<CitizenRequestsTrack />} />
             <Route path="services/:id" element={<CitizenPortalRequestDetails />} />
+            <Route path="municipal-services" element={<MunicipalServices />} />
+            <Route path="announcements" element={<Announcements />} />
             
             {/* Reports */}
             <Route path="report" element={<CitizenReportIssue />} />
             <Route path="reports" element={<CitizenReportsList />} />
             <Route path="reports/:id" element={<ReportDetails />} />
             
+            {/* My Activity & History */}
+            <Route path="history" element={<RequestHistory />} />
+            <Route path="feedback" element={<Feedback />} />
+            
+            {/* AI Assistant */}
+            <Route path="assistant" element={<AiAssistant />} />
+
             {/* Communication & Account */}
             <Route path="notifications" element={<CitizenNotifications />} />
             <Route path="messages" element={<CitizenMessages />} />
             <Route path="profile" element={<CitizenProfile />} />
             <Route path="settings" element={<CitizenSettings />} />
+            
+            {/* Map & City */}
             <Route path="map" element={<CitizenMap />} />
+            <Route path="nearby" element={<NearbyIssues />} />
+            <Route path="ward-info" element={<WardInformation />} />
+          </Route>
+        </Route>
+
+        {/* PROTECTED AUTHORITY ROUTES */}
+        <Route element={<ProtectedRoute allowedRoles={['HIGHER_OFFICIAL', 'ADMIN']} />}>
+          <Route path="/authority" element={<AuthorityLayout />}>
+            <Route index element={<Navigate to="/authority/dashboard" replace />} />
+            <Route path="dashboard" element={<AuthorityDashboard />} />
+            <Route path="reports" element={<AuthorityReports />} />
+            <Route path="reports/:id" element={<AuthorityReportDetail />} />
+            <Route path="operations" element={<AuthorityOperations />} />
+            <Route path="gis" element={<AuthorityGIS />} />
+            <Route path="ai-insights" element={<AuthorityAIInsights />} />
+            <Route path="*" element={<div className="p-10 text-white">Module Not Found</div>} />
           </Route>
         </Route>
 

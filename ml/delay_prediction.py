@@ -29,16 +29,16 @@ class DelayPredictor:
             SELECT 
                 p.id,
                 p.status,
-                p.allocated_budget,
-                p.amount_spent,
-                p.progress_percentage,
+                p.budget as allocated_budget,
+                (p.budget * (IFNULL(p.reported_progress, 0) / 100.0)) as amount_spent,
+                p.reported_progress as progress_percentage,
                 p.priority,
                 p.start_date,
-                p.expected_end_date,
+                p.expected_completion as expected_end_date,
                 (julianday(date('now')) - julianday(p.start_date)) as days_elapsed,
-                (julianday(p.expected_end_date) - julianday(date('now'))) as days_remaining
+                (julianday(p.expected_completion) - julianday(date('now'))) as days_remaining
             FROM projects p
-            WHERE p.start_date IS NOT NULL AND p.expected_end_date IS NOT NULL
+            WHERE p.start_date IS NOT NULL AND p.expected_completion IS NOT NULL
         """
         df = pd.read_sql_query(query, conn)
         conn.close()

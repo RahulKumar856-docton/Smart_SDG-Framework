@@ -24,7 +24,7 @@ def create_notification(user_id, title, message, notif_type='SYSTEM', priority='
         cursor.execute("""
             INSERT INTO notifications 
             (user_id, title, message, type, priority, module, entity_type, entity_id, action_url) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (user_id, title, message, notif_type, priority, module, entity_type, entity_id, action_url))
         conn.commit()
         return True
@@ -32,7 +32,11 @@ def create_notification(user_id, title, message, notif_type='SYSTEM', priority='
         print(f"Error creating notification: {e}")
         return False
     finally:
-        cursor.close()
+        # cursor.close() is not needed for sqlite3 like this, but harmless if it has it. Let's just leave it.
+        try:
+            cursor.close()
+        except:
+            pass
         conn.close()
 
 def broadcast_notification_to_role(role, title, message, **kwargs):
@@ -44,13 +48,13 @@ def broadcast_notification_to_role(role, title, message, **kwargs):
         return False
         
     try:
-        cursor = conn.cursor(dictionary=True)
-        # In SQLite roles are joined via role_id, but the user requested role might be string. 
-        # Need to join roles or just users. Let's do a join on roles.
+        # For sqlite3, row_factory is usually used instead of dictionary=True
+        # cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT u.id FROM users u
             JOIN roles r ON u.role_id = r.id
-            WHERE r.name = %s
+            WHERE r.name = ?
         """, (role.upper(),))
         users = cursor.fetchall()
         

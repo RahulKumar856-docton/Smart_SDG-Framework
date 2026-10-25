@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   FolderKanban, RefreshCw, AlertCircle, TrendingUp, Target, ShieldAlert, FileCheck, BrainCircuit, Sparkles, AlertTriangle, PlayCircle
 } from 'lucide-react';
@@ -207,7 +208,7 @@ export default function OfficerDashboard() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-lg text-slate-800">Assigned Citizen Requests</h3>
-            <button className="text-sm font-bold text-teal-700 hover:underline">View All</button>
+            <Link to="/officer/requests" className="text-sm font-bold text-teal-700 hover:underline">View All</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -234,7 +235,7 @@ export default function OfficerDashboard() {
                         </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button className="text-teal-700 font-bold hover:underline">Open</button>
+                      <Link to="/officer/requests" className="text-teal-700 font-bold hover:underline">Open</Link>
                     </td>
                   </motion.tr>
                 )) : (

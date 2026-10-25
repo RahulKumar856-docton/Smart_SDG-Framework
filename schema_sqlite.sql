@@ -74,7 +74,72 @@ CREATE TABLE IF NOT EXISTS kpis (
     unit TEXT,
     target_value REAL NOT NULL,
     weight REAL NOT NULL DEFAULT 1.00,
+    code TEXT,
+    category TEXT,
+    department_id INTEGER,
+    project_id INTEGER,
+    baseline_value REAL DEFAULT 0.00,
+    current_value REAL DEFAULT 0.00,
+    direction TEXT DEFAULT 'Higher is Better',
+    frequency TEXT DEFAULT 'Monthly',
+    start_date DATE,
+    target_date DATE,
+    status TEXT DEFAULT 'On Target',
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sdg_id) REFERENCES sdgs(id) ON DELETE CASCADE
+);
+
+-- 21. Data Quality Scans Table
+CREATE TABLE IF NOT EXISTS data_quality_scans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'RUNNING',
+    completed_at DATETIME,
+    records_checked INTEGER DEFAULT 0,
+    issues_found INTEGER DEFAULT 0,
+    critical_issues INTEGER DEFAULT 0,
+    duration REAL DEFAULT 0.0,
+    overall_score REAL DEFAULT 0.0,
+    completeness_score REAL DEFAULT 0.0,
+    validity_score REAL DEFAULT 0.0,
+    consistency_score REAL DEFAULT 0.0,
+    recency_score REAL DEFAULT 0.0,
+    verification_score REAL DEFAULT 0.0
+);
+
+-- 22. Data Quality Issues Table
+CREATE TABLE IF NOT EXISTS data_quality_issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    module TEXT NOT NULL,
+    record_id INTEGER,
+    issue_type TEXT,
+    severity TEXT,
+    field TEXT,
+    current_value TEXT,
+    description TEXT,
+    status TEXT DEFAULT 'OPEN',
+    detected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    resolved_by INTEGER,
+    ignored_at DATETIME,
+    ignored_by INTEGER,
+    ignore_reason TEXT,
+    FOREIGN KEY (scan_id) REFERENCES data_quality_scans(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS kpi_measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kpi_id INTEGER NOT NULL,
+    value REAL NOT NULL,
+    achievement_percentage REAL DEFAULT 0.00,
+    measurement_date DATE NOT NULL,
+    notes TEXT,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (kpi_id) REFERENCES kpis(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 -- 6. Project to SDGs Mapping

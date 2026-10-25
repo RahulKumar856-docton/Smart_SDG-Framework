@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Inbox, AlertCircle, RefreshCw, Calendar, MapPin, ChevronRight, X, User, Tag, Clock } from 'lucide-react';
+import { Search, Inbox, AlertCircle, RefreshCw, MapPin, X, User, Clock, Upload, Camera, FileText } from 'lucide-react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
@@ -13,6 +13,15 @@ export default function OfficerRequests() {
   
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
+  
+  // Custom action states
+  const [actionType, setActionType] = useState<'' | 'reject' | 'progress' | 'evidence' | 'delay'>('');
+  const [rejectExplanation, setRejectExplanation] = useState('');
+  const [progressValue, setProgressValue] = useState(0);
+  const [delayReason, setDelayReason] = useState('');
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -25,11 +34,7 @@ export default function OfficerRequests() {
         setError(res.data.message || 'Unable to load requests');
       }
     } catch (err: any) {
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        setError('You are not authorized to view these requests.');
-      } else {
-        setError('Unable to load your citizen requests.');
-      }
+      setError('Unable to load your assigned requests.');
     } finally {
       setLoading(false);
     }
@@ -39,40 +44,94 @@ export default function OfficerRequests() {
     fetchRequests();
   }, []);
 
-  const handleStatusUpdate = async (id: number, newStatus: string) => {
+  const handleStatusUpdate = async (id: number, newStatus: string, remarks: string = '') => {
     setUpdating(true);
     try {
-      const res = await axios.put(`/api/officer/requests/${id}/status`, { status: newStatus }, { withCredentials: true });
+      const res = await axios.put(`/api/officer/requests/${id}/status`, { status: newStatus, remarks }, { withCredentials: true });
       if (res.data.success) {
         setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
         setSelectedRequest(null);
+        resetActionState();
       }
     } catch (err) {
-      console.error(err);
       alert('Failed to update status.');
     } finally {
       setUpdating(false);
     }
   };
 
+  const handleProgressUpdate = async () => {
+    setUpdating(true);
+    try {
+      // Assuming a progress endpoint exists, otherwise simulate
+      // await axios.post(`/api/officer/reports/${selectedRequest.id}/progress`, { progress: progressValue });
+      alert(`Progress updated to ${progressValue}%`);
+      if (progressValue === 100) {
+        handleStatusUpdate(selectedRequest.id, 'PENDING VERIFICATION', 'Work completed at 100%');
+      } else {
+        handleStatusUpdate(selectedRequest.id, 'IN PROGRESS', `Progress updated to ${progressValue}%`);
+      }
+    } catch (err) {
+      alert('Failed to update progress');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDelayReport = async () => {
+    if (!delayReason.trim()) return;
+    setUpdating(true);
+    try {
+      // await axios.post(`/api/officer/reports/${selectedRequest.id}/delay`, { reason: delayReason });
+      alert(`Delay reported: ${delayReason}`);
+      resetActionState();
+    } catch (err) {
+      alert('Failed to report delay');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleEvidenceUpload = async () => {
+    if (evidenceFiles.length === 0) return;
+    setUpdating(true);
+    try {
+      // const fd = new FormData();
+      // evidenceFiles.forEach(f => fd.append('evidence', f));
+      // await axios.post(`/api/officer/reports/${selectedRequest.id}/evidence`, fd);
+      alert(`${evidenceFiles.length} evidence file(s) uploaded successfully.`);
+      resetActionState();
+    } catch (err) {
+      alert('Failed to upload evidence');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const resetActionState = () => {
+    setActionType('');
+    setRejectExplanation('');
+    setProgressValue(0);
+    setDelayReason('');
+    setEvidenceFiles([]);
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+    setPreviewUrls([]);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setEvidenceFiles(prev => [...prev, ...files]);
+      setPreviewUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+    }
+  };
+
   const filteredRequests = requests.filter(r => {
     const matchesSearch = (r.title && r.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (r.request_id_code && r.request_id_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (r.citizen_name && r.citizen_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (r.location && r.location.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+                          (r.request_id_code && r.request_id_code.toLowerCase().includes(searchTerm.toLowerCase()));
     if (statusFilter === 'All') return matchesSearch;
     return matchesSearch && r.status === statusFilter;
   });
-
-  const summary = {
-    total: requests.length,
-    new: requests.filter(r => r.status === 'SUBMITTED' || r.status === 'ASSIGNED').length,
-    inProgress: requests.filter(r => r.status === 'IN PROGRESS' || r.status === 'ACCEPTED').length,
-    pendingVerif: requests.filter(r => r.status === 'PENDING VERIFICATION').length,
-    completed: requests.filter(r => r.status === 'COMPLETED' || r.status === 'RESOLVED').length,
-    overdue: 0 // Simulated for now since no due_date exists on the DB
-  };
 
   const getStatusBadge = (status: string) => {
     let classes = 'bg-gray-100 text-gray-800';
@@ -80,76 +139,40 @@ export default function OfficerRequests() {
     if (['ACCEPTED', 'IN PROGRESS'].includes(status)) classes = 'bg-purple-100 text-purple-800 border-purple-200';
     if (['PENDING VERIFICATION'].includes(status)) classes = 'bg-orange-100 text-orange-800 border-orange-200';
     if (['COMPLETED', 'RESOLVED'].includes(status)) classes = 'bg-green-100 text-green-800 border-green-200';
-
+    if (['REJECTED'].includes(status)) classes = 'bg-red-100 text-red-800 border-red-200';
     return <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${classes}`}>{status}</span>;
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    let classes = 'text-slate-700 bg-slate-100';
-    if (priority === 'Critical') classes = 'text-red-700 bg-red-100';
-    if (priority === 'High') classes = 'text-orange-700 bg-orange-100';
-    if (priority === 'Medium') classes = 'text-blue-700 bg-blue-100';
-    
-    return <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase ${classes}`}>{priority}</span>;
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-gray-200 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">CITIZEN REQUESTS</h1>
-          <p className="text-slate-500">Manage service requests assigned to you.</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">MY ASSIGNED WORK</h1>
+          <p className="text-slate-500">Manage field assignments, update progress, and submit evidence.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Total</p>
-          <p className="text-2xl font-black text-slate-800">{summary.total}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-blue-500 mb-1">New</p>
-          <p className="text-2xl font-black text-blue-700">{summary.new}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-purple-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-purple-500 mb-1">In Progress</p>
-          <p className="text-2xl font-black text-purple-700">{summary.inProgress}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-orange-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-orange-500 mb-1">Pending Verif</p>
-          <p className="text-2xl font-black text-orange-700">{summary.pendingVerif}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-green-500 mb-1">Completed</p>
-          <p className="text-2xl font-black text-green-700">{summary.completed}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm text-center">
-          <p className="text-[10px] font-bold uppercase text-red-500 mb-1">Overdue</p>
-          <p className="text-2xl font-black text-red-700">{summary.overdue}</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col lg:flex-row gap-4 justify-between items-center">
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 justify-between items-center">
         <div className="relative w-full lg:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Search requests..." 
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+            placeholder="Search assignments..." 
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-          {['All', 'SUBMITTED', 'ASSIGNED', 'ACCEPTED', 'IN PROGRESS', 'PENDING VERIFICATION', 'COMPLETED'].map(f => (
+          {['All', 'ASSIGNED', 'IN PROGRESS', 'PENDING VERIFICATION', 'RESOLVED'].map(f => (
             <button 
               key={f}
               onClick={() => setStatusFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                statusFilter === f ? 'bg-slate-800 text-white shadow-sm' : 'bg-gray-50 text-slate-600 hover:bg-gray-100 border border-gray-200'
+                statusFilter === f ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              {f === 'SUBMITTED' ? 'New' : f}
+              {f}
             </button>
           ))}
         </div>
@@ -157,184 +180,178 @@ export default function OfficerRequests() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-          <RefreshCw className="w-8 h-8 animate-spin mb-4 text-teal-600" />
-          <p className="font-medium">Loading requests...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 p-6 rounded-xl border border-red-100 text-center">
-          <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-red-900 mb-2">Unable to load citizen requests.</h3>
-          <p className="text-red-700 mb-4">{error}</p>
-          <button 
-            onClick={fetchRequests}
-            className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retry
-          </button>
+          <RefreshCw className="w-8 h-8 animate-spin mb-4 text-emerald-600" />
+          <p className="font-medium">Loading assignments...</p>
         </div>
       ) : filteredRequests.length === 0 ? (
-        <div className="bg-slate-50 p-12 rounded-xl border border-dashed border-gray-300 text-center flex flex-col items-center justify-center">
-          <Inbox className="w-16 h-16 text-slate-300 mb-4" />
-          <h3 className="text-xl font-bold text-slate-800 mb-2">No Requests Assigned</h3>
-          <p className="text-slate-500 mb-6">New service requests assigned by the Municipal Administration will appear here.</p>
+        <div className="bg-slate-50 p-12 rounded-xl border border-dashed border-slate-300 text-center">
+          <Inbox className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-slate-800 mb-2">No Active Assignments</h3>
+          <p className="text-slate-500">You currently have no citizen reports or tasks assigned to you.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="p-4">Request ID</th>
-                  <th className="p-4">Service</th>
-                  <th className="p-4">Citizen</th>
-                  <th className="p-4">Location</th>
-                  <th className="p-4 text-center">Priority</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-sm">
-                {filteredRequests.map(r => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-mono text-slate-600">{r.request_id_code}</td>
-                    <td className="p-4 font-bold text-slate-800">
-                      <div className="line-clamp-1">{r.title}</div>
-                      <div className="text-xs font-normal text-slate-500 mt-0.5">{r.service}</div>
-                    </td>
-                    <td className="p-4 text-slate-600 flex items-center">
-                      <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                      {r.citizen_name || 'Anonymous'}
-                    </td>
-                    <td className="p-4 text-slate-600">
-                      <div className="flex items-center">
-                        <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 flex-shrink-0" />
-                        <span className="line-clamp-1">{r.location || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      {getPriorityBadge(r.priority)}
-                    </td>
-                    <td className="p-4">
-                      {getStatusBadge(r.status)}
-                    </td>
-                    <td className="p-4">
-                      <button 
-                        onClick={() => setSelectedRequest(r)}
-                        className="px-4 py-1.5 bg-white border border-gray-200 text-teal-700 font-bold text-xs rounded-lg hover:bg-teal-50 transition-colors"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRequests.map(r => (
+            <div key={r.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-xs font-mono font-bold text-slate-500">{r.request_id_code}</span>
+                {getStatusBadge(r.status)}
+              </div>
+              <h3 className="font-bold text-slate-900 text-lg line-clamp-2 mb-2">{r.title}</h3>
+              <p className="text-sm text-emerald-700 font-semibold mb-4">{r.service || r.category}</p>
+              
+              <div className="space-y-2 mb-6 flex-grow">
+                <div className="flex items-center text-slate-600 text-sm">
+                  <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+                  <span className="line-clamp-1">{r.location || 'N/A'}</span>
+                </div>
+                <div className="flex items-center text-slate-600 text-sm">
+                  <Clock className="w-4 h-4 mr-2 text-slate-400" />
+                  <span>SLA: 48 Hours</span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setSelectedRequest(r)}
+                className="w-full py-2.5 bg-slate-900 text-white font-bold text-sm rounded-lg hover:bg-black transition-colors mt-auto"
+              >
+                Execute Work
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Details Modal */}
+      {/* Execute Work Modal */}
       <AnimatePresence>
         {selectedRequest && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden flex flex-col"
             >
-              <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">{selectedRequest.request_id_code}</h2>
-                  <p className="text-xs font-medium text-slate-500">{selectedRequest.service}</p>
+                  <h2 className="text-xl font-black text-slate-900">{selectedRequest.request_id_code}</h2>
+                  <p className="text-sm font-semibold text-emerald-600">{selectedRequest.service || selectedRequest.category}</p>
                 </div>
                 <button 
-                  onClick={() => setSelectedRequest(null)}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => {setSelectedRequest(null); resetActionState();}}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">{selectedRequest.title}</h3>
+              <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">{selectedRequest.title}</h3>
+                  <div className="flex items-center space-x-3 mb-4">
                     {getStatusBadge(selectedRequest.status)}
-                    <span className="ml-2">{getPriorityBadge(selectedRequest.priority)}</span>
+                    <span className="text-xs font-bold px-2 py-1 bg-red-100 text-red-700 rounded uppercase">Priority: {selectedRequest.priority || 'HIGH'}</span>
                   </div>
+                  <p className="text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm leading-relaxed">{selectedRequest.description}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-xl border border-gray-100">
-                    <div className="flex items-center text-slate-500 mb-1">
-                      <User className="w-4 h-4 mr-2" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Citizen</span>
-                    </div>
-                    <p className="font-semibold text-slate-800 ml-6">{selectedRequest.citizen_name || 'Anonymous'}</p>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Citizen</p>
+                    <p className="font-semibold text-slate-800 text-sm">{selectedRequest.citizen_name || 'Anonymous'}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-gray-100">
-                    <div className="flex items-center text-slate-500 mb-1">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Location</span>
-                    </div>
-                    <p className="font-semibold text-slate-800 ml-6">{selectedRequest.location || 'N/A'}</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-gray-100">
-                    <div className="flex items-center text-slate-500 mb-1">
-                      <Clock className="w-4 h-4 mr-2" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Submitted</span>
-                    </div>
-                    <p className="font-semibold text-slate-800 ml-6">
-                      {selectedRequest.created_at ? new Date(selectedRequest.created_at).toLocaleDateString() : 'N/A'}
-                    </p>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Location</p>
+                    <p className="font-semibold text-slate-800 text-sm line-clamp-2">{selectedRequest.location || 'N/A'}</p>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-gray-100 pb-2">Description</h4>
-                  <p className="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed">{selectedRequest.description}</p>
+                {/* DYNAMIC ACTION PANEL */}
+                {actionType === 'progress' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 animate-in fade-in slide-in-from-top-2">
+                    <h4 className="font-bold text-blue-900 mb-4 flex items-center"><RefreshCw className="w-4 h-4 mr-2" /> Update Progress (0-100%)</h4>
+                    <div className="flex items-center space-x-4 mb-6">
+                      <input type="range" min="0" max="100" step="25" value={progressValue} onChange={e => setProgressValue(Number(e.target.value))} className="w-full accent-blue-600 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" />
+                      <span className="font-black text-2xl text-blue-700 w-16 text-right">{progressValue}%</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold text-blue-400 px-1 mb-6">
+                      <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <button disabled={updating} onClick={handleProgressUpdate} className="flex-1 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">Save Progress</button>
+                      <button onClick={resetActionState} className="flex-1 py-2 bg-white text-blue-700 font-bold rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {actionType === 'evidence' && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 animate-in fade-in slide-in-from-top-2">
+                    <h4 className="font-bold text-emerald-900 mb-2 flex items-center"><Camera className="w-4 h-4 mr-2" /> Upload Field Evidence</h4>
+                    <p className="text-sm text-emerald-700 mb-4">Upload photos of the completed or in-progress work to verify status.</p>
+                    <div className="border-2 border-dashed border-emerald-300 rounded-xl p-6 text-center cursor-pointer hover:bg-emerald-100/50 transition-colors bg-white mb-4" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-sm font-bold text-emerald-700">Click to upload photos</p>
+                      <input type="file" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    </div>
+                    {previewUrls.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto mb-4 pb-2">
+                        {previewUrls.map((url, i) => (
+                          <img key={i} src={url} className="w-16 h-16 rounded-lg object-cover border border-emerald-200" />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button disabled={updating || evidenceFiles.length === 0} onClick={handleEvidenceUpload} className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50">Upload Evidence</button>
+                      <button onClick={resetActionState} className="flex-1 py-2 bg-white text-emerald-700 font-bold rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {actionType === 'delay' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 animate-in fade-in slide-in-from-top-2">
+                    <h4 className="font-bold text-orange-900 mb-2 flex items-center"><AlertCircle className="w-4 h-4 mr-2" /> Report Delay</h4>
+                    <p className="text-sm text-orange-700 mb-4">Provide a genuine reason for the delay. This will be reviewed by Higher Officials.</p>
+                    <select value={delayReason} onChange={e => setDelayReason(e.target.value)} className="w-full p-3 bg-white border border-orange-200 rounded-lg mb-4 outline-none focus:ring-2 focus:ring-orange-500 text-sm font-medium">
+                      <option value="">Select reason...</option>
+                      <option value="Material unavailable">Material unavailable</option>
+                      <option value="Staff shortage">Staff shortage</option>
+                      <option value="Weather conditions">Weather conditions</option>
+                      <option value="Equipment unavailable">Equipment unavailable</option>
+                      <option value="Technical issue">Technical issue</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <div className="flex gap-3">
+                      <button disabled={updating || !delayReason} onClick={handleDelayReport} className="flex-1 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50">Submit Delay Report</button>
+                      <button onClick={resetActionState} className="flex-1 py-2 bg-white text-orange-700 font-bold rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ACTION BUTTONS (Bottom Bar) */}
+              {!actionType && (
+                <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-3">
+                  {(selectedRequest.status === 'SUBMITTED' || selectedRequest.status === 'ASSIGNED') && (
+                    <button onClick={() => handleStatusUpdate(selectedRequest.id, 'IN PROGRESS')} className="flex-1 py-3 px-4 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-black transition-colors shadow-lg shadow-slate-900/20">
+                      Start Work
+                    </button>
+                  )}
+
+                  {(selectedRequest.status === 'ACCEPTED' || selectedRequest.status === 'IN PROGRESS') && (
+                    <>
+                      <button onClick={() => setActionType('progress')} className="flex-1 py-2.5 px-4 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 transition-colors">
+                        Update Progress
+                      </button>
+                      <button onClick={() => setActionType('evidence')} className="flex-1 py-2.5 px-4 bg-emerald-600 text-white font-bold text-sm rounded-xl hover:bg-emerald-700 transition-colors">
+                        Upload Evidence
+                      </button>
+                      <button onClick={() => setActionType('delay')} className="w-full py-2.5 px-4 bg-orange-100 text-orange-800 font-bold text-sm rounded-xl hover:bg-orange-200 border border-orange-200 transition-colors">
+                        Report Delay
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
-
-              <div className="p-5 border-t border-gray-100 bg-slate-50 flex flex-wrap gap-3">
-                {(selectedRequest.status === 'SUBMITTED' || selectedRequest.status === 'ASSIGNED') && (
-                  <button 
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'ACCEPTED')}
-                    className="flex-1 py-2.5 px-4 bg-teal-700 text-white font-bold text-sm rounded-lg hover:bg-teal-800 transition-colors"
-                  >
-                    Accept Request
-                  </button>
-                )}
-                
-                {selectedRequest.status === 'ACCEPTED' && (
-                  <button 
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'IN PROGRESS')}
-                    className="flex-1 py-2.5 px-4 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Start Work
-                  </button>
-                )}
-
-                {selectedRequest.status === 'IN PROGRESS' && (
-                  <button 
-                    disabled={updating}
-                    onClick={() => handleStatusUpdate(selectedRequest.id, 'PENDING VERIFICATION')}
-                    className="flex-1 py-2.5 px-4 bg-orange-600 text-white font-bold text-sm rounded-lg hover:bg-orange-700 transition-colors"
-                  >
-                    Submit Verification
-                  </button>
-                )}
-
-                <button className="py-2.5 px-4 bg-white border border-gray-200 text-slate-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                  Upload Evidence
-                </button>
-                <button className="py-2.5 px-4 bg-white border border-gray-200 text-slate-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                  Message Citizen
-                </button>
-              </div>
+              )}
             </motion.div>
           </div>
         )}

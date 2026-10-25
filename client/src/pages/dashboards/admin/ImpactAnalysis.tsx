@@ -370,8 +370,11 @@ export default function ImpactAnalysis() {
                           <span className="text-slate-500 flex items-center gap-1">
                             Verified Progress 
                             {projectDetails.analysis.verification.available && (
-                              projectDetails.analysis.output.verified_progress < projectDetails.analysis.output.reported_progress ? 
-                              <AlertTriangle className="w-3 h-3 text-orange-500" title="Discrepancy detected" /> : <CheckCircle className="w-3 h-3 text-emerald-500" />
+                              projectDetails.analysis.output.verified_progress < projectDetails.analysis.output.reported_progress ? (
+                                <span title="Discrepancy detected"><AlertTriangle className="w-3 h-3 text-orange-500" /></span>
+                              ) : (
+                                <CheckCircle className="w-3 h-3 text-emerald-500" />
+                              )
                             )}
                           </span>
                           <span className="font-bold">{projectDetails.analysis.output.verified_progress}%</span>

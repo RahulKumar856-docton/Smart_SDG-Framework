@@ -8,7 +8,7 @@ api_admin_audit_bp = Blueprint('api_admin_audit', __name__)
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('role', '').upper() != 'ADMIN':
+        if 'user_id' not in session or session.get('role', '').upper() not in ['ADMIN', 'SUPER_ADMIN']:
             return jsonify({'success': False, 'message': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -29,11 +29,12 @@ def get_audit_logs():
         date_range = request.args.get('date_range', 'Last 30 Days')
         
         query = """
-            SELECT a.id, a.user_id, u.full_name as user_name, u.role as user_role,
+            SELECT a.id, a.user_id, u.full_name as user_name, COALESCE(r.name, 'System') as user_role,
                    a.action, a.module, a.entity, a.entity_id, 
                    a.old_value, a.new_value, a.result, a.timestamp
             FROM audit_logs a
             LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN roles r ON u.role_id = r.id
             WHERE 1=1
         """
         params = []
@@ -48,8 +49,8 @@ def get_audit_logs():
             query += " AND a.result = %s"
             params.append(result)
         if user_role:
-            query += " AND u.role = %s"
-            params.append(user_role)
+            query += " AND UPPER(r.name) = %s"
+            params.append(user_role.upper())
             
         # Date filtering
         if date_range != 'All Time':
@@ -130,14 +131,16 @@ def get_audit_statistics():
         cursor.execute("""
             SELECT COUNT(*) as c FROM audit_logs a
             JOIN users u ON a.user_id = u.id
-            WHERE u.role = 'Admin'
+            JOIN roles r ON u.role_id = r.id
+            WHERE UPPER(r.name) IN ('ADMIN', 'SUPER_ADMIN')
         """)
         stats['admin'] = cursor.fetchone()['c']
         
         cursor.execute("""
             SELECT COUNT(*) as c FROM audit_logs a
             JOIN users u ON a.user_id = u.id
-            WHERE u.role = 'Officer'
+            JOIN roles r ON u.role_id = r.id
+            WHERE UPPER(r.name) = 'OFFICER'
         """)
         stats['officer'] = cursor.fetchone()['c']
         

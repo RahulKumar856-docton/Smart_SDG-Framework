@@ -22,6 +22,11 @@ from routes.api_admin_settings import api_admin_settings_bp
 from routes.citizen_api import citizen_api_bp
 from routes.officer_api import officer_api_bp
 from routes.api_messages import api_messages_bp
+from routes.api_authority import api_authority_bp
+from routes.api_admin_impact import api_admin_impact_bp
+from routes.api_admin_risk import api_admin_risk_bp
+from routes.api_chatbot import api_chatbot_bp
+from routes.api_ai_intelligence import ai_intelligence_bp
 from services.settings_service import SettingsService
 
 def create_app():
@@ -54,6 +59,20 @@ def create_app():
     app.register_blueprint(citizen_api_bp, url_prefix='/api/citizen')
     app.register_blueprint(officer_api_bp, url_prefix='/api/officer')
     app.register_blueprint(api_messages_bp, url_prefix='/api/messages')
+    app.register_blueprint(api_authority_bp, url_prefix='/api/authority')
+    app.register_blueprint(api_admin_impact_bp, url_prefix='/api/admin/impact-analysis')
+    app.register_blueprint(api_admin_risk_bp, url_prefix='/api/admin/risk')
+    from routes.api_chatbot import api_chatbot_bp
+    from routes.api_ai_intelligence import ai_intelligence_bp
+    from routes.api_notifications import api_notifications_bp
+    from routes.api_super_admin import api_system_bp
+    from routes.api_admin_operational import api_admin_operational_bp
+    app.register_blueprint(api_chatbot_bp, url_prefix='/api/chatbot')
+    app.register_blueprint(ai_intelligence_bp, url_prefix='/api/ai-intelligence')
+    app.register_blueprint(api_notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(api_system_bp, url_prefix='/api/system')
+    app.register_blueprint(api_system_bp, url_prefix='/api/super-admin', name='api_super_admin_legacy')
+    app.register_blueprint(api_admin_operational_bp, url_prefix='/api/admin')
 
     @app.route('/uploads/evidence/<path:filename>')
     def serve_evidence(filename):
@@ -70,6 +89,10 @@ def create_app():
             timeout_mins = SettingsService.get_setting('session_timeout_minutes', 30)
             app.permanent_session_lifetime = timedelta(minutes=timeout_mins)
             session.permanent = True
+
+    @app.route('/')
+    def index():
+        return jsonify({"success": True, "message": "Smart SDG Framework API is running!"})
 
     @app.errorhandler(404)
     def not_found(e):
