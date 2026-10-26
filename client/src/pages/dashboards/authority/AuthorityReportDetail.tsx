@@ -263,6 +263,40 @@ export default function AuthorityReportDetail() {
         </div>
       </div>
 
+      {/* OFFICER DECLINED ALERT BANNER */}
+      {(report.status === 'DECLINED_BY_OFFICER' || (!report.officer_id && report.timeline?.some((e: any) => e.event_type === 'OFFICER_DECLINED'))) && (
+        <div className="mb-8 p-5 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-rose-600 text-white rounded-xl shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-rose-950 text-base">⚠️ Assignment Declined - Reassignment Required</h3>
+              <p className="text-sm text-rose-800 mt-1 font-medium">
+                {report.timeline?.slice().reverse().find((e: any) => e.event_type === 'OFFICER_DECLINED')?.description || 
+                  'The previously assigned municipal officer declined this task. Please reassign to another officer.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 w-full md:w-auto shrink-0">
+            <button 
+              onClick={() => setShowAssignModal(true)} 
+              className="flex-1 md:flex-none px-4 py-2.5 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" /> Reassign Officer
+            </button>
+            <button 
+              onClick={handleAutoAssign}
+              disabled={assigning}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> ⚡ AI Reassign
+            </button>
+          </div>
+        </div>
+      )}
+
+
       <div className="grid lg:grid-cols-3 gap-8">
         
         {/* LEFT TWO COLUMNS */}

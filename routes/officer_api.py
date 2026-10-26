@@ -397,42 +397,189 @@ def get_requests():
     return jsonify({'success': True, 'data': combined})
 
 
-@officer_api_bp.route('/requests/<int:request_id>/status', methods=['PUT'])
+@officer_api_bp.route('/requests/<int:request_id>/accept', methods=['POST'])
 @role_required('OFFICER')
-def update_request_status(request_id):
+def accept_request(request_id):
     user_id = session['user_id']
-    data = request.get_json()
-    new_status = data.get('status')
-    remarks = data.get('remarks', '')
-    
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
-        # verify assignment
-        cursor.execute("SELECT * FROM request_assignments WHERE request_id = ? AND officer_id = ?", (request_id, user_id))
-        if not cursor.fetchone():
-            return jsonify({'success': False, 'message': 'Not authorized'}), 403
-            
-        cursor.execute("UPDATE citizen_requests SET status = ? WHERE id = ?", (new_status, request_id))
+        cursor.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,))
+        officer = cursor.fetchone()
+        officer_name = officer['full_name'] if officer else f"Officer #{user_id}"
         
-        # log to request timeline
+        # 1. Check if citizen_report
+        cursor.execute("SELECT id, report_id_code FROM citizen_reports WHERE id = ? AND officer_id = ?", (request_id, user_id))
+        report = cursor.fetchone()
+        if report:
+            cursor.execute("UPDATE citizen_reports SET status = 'IN_PROGRESS' WHERE id = ?", (request_id,))
+            cursor.execute("""
+                INSERT INTO report_timeline (report_id, event_type, description)
+                VALUES (?, 'OFFICER_ACCEPTED', ?)
+            """, (request_id, f"Officer {officer_name} accepted the task and initiated work"))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Task accepted! Status set to IN PROGRESS.'})
+            
+        # 2. Check if citizen_request
         cursor.execute("""
-            INSERT INTO request_updates (request_id, user_id, status_change, remarks) 
-            VALUES (?, ?, ?, ?)
-        """, (request_id, user_id, new_status, remarks))
-        
-        # audit log
-        cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'UPDATE_STATUS', 'Request', ?, ?)",
-            (user_id, request_id, f"Status updated to {new_status}"))
+            SELECT cr.id FROM citizen_requests cr 
+            JOIN request_assignments ra ON cr.id = ra.request_id 
+            WHERE cr.id = ? AND ra.officer_id = ?
+        """, (request_id, user_id))
+        creq = cursor.fetchone()
+        if creq:
+            cursor.execute("UPDATE citizen_requests SET status = 'IN PROGRESS' WHERE id = ?", (request_id,))
+            cursor.execute("""
+                INSERT INTO request_updates (request_id, user_id, status_change, remarks)
+                VALUES (?, ?, 'IN PROGRESS', ?)
+            """, (request_id, user_id, f"Officer {officer_name} accepted the request"))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Request accepted! Status set to IN PROGRESS.'})
             
-        conn.commit()
-        return jsonify({'success': True, 'message': 'Status updated'})
+        return jsonify({'success': False, 'message': 'Task not found or not assigned to you'}), 403
     except Exception as e:
         conn.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         cursor.close()
         conn.close()
+
+@officer_api_bp.route('/requests/<int:request_id>/reject', methods=['POST'])
+@role_required('OFFICER')
+def reject_request(request_id):
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    reason = data.get('reason') or 'Declined by officer'
+    notes = data.get('notes', '')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,))
+        officer = cursor.fetchone()
+        officer_name = officer['full_name'] if officer else f"Officer #{user_id}"
+        
+        full_explanation = f"{reason}" + (f" - {notes}" if notes else "")
+
+        # 1. Check if citizen_report
+        cursor.execute("SELECT id, report_id_code FROM citizen_reports WHERE id = ? AND officer_id = ?", (request_id, user_id))
+        report = cursor.fetchone()
+        if report:
+            cursor.execute("""
+                UPDATE citizen_reports 
+                SET officer_id = NULL, status = 'DECLINED_BY_OFFICER' 
+                WHERE id = ?
+            """, (request_id,))
+            
+            cursor.execute("""
+                INSERT INTO report_timeline (report_id, event_type, description)
+                VALUES (?, 'OFFICER_DECLINED', ?)
+            """, (request_id, f"Officer {officer_name} declined assignment. Reason: {full_explanation}"))
+            
+            # Send notification to Admins & Authorities
+            cursor.execute("""
+                SELECT u.id FROM users u 
+                JOIN roles r ON u.role_id = r.id 
+                WHERE UPPER(r.name) IN ('ADMIN', 'SUPER_ADMIN', 'HIGHER_OFFICIAL')
+            """)
+            admin_users = cursor.fetchall()
+            for admin in admin_users:
+                cursor.execute("""
+                    INSERT INTO notifications (user_id, title, message, entity_type, entity_id, type, priority, module)
+                    VALUES (?, 'Task Declined by Officer - Reassignment Required', ?, 'Report', ?, 'ALERT', 'CRITICAL', 'AUTHORITY')
+                """, (admin['id'], f"Officer {officer_name} declined Report #{report['report_id_code']}: {full_explanation}. Please reassign.", request_id))
+                
+            conn.commit()
+            return jsonify({
+                'success': True, 
+                'message': 'Assignment declined. The task has been returned to the Municipal Authority for reassignment.'
+            })
+            
+        # 2. Check if citizen_request
+        cursor.execute("""
+            SELECT cr.id, cr.request_id_code FROM citizen_requests cr 
+            JOIN request_assignments ra ON cr.id = ra.request_id 
+            WHERE cr.id = ? AND ra.officer_id = ?
+        """, (request_id, user_id))
+        creq = cursor.fetchone()
+        if creq:
+            cursor.execute("DELETE FROM request_assignments WHERE request_id = ? AND officer_id = ?", (request_id, user_id))
+            cursor.execute("UPDATE citizen_requests SET status = 'DECLINED_BY_OFFICER' WHERE id = ?", (request_id,))
+            cursor.execute("""
+                INSERT INTO request_updates (request_id, user_id, status_change, remarks)
+                VALUES (?, ?, 'DECLINED_BY_OFFICER', ?)
+            """, (request_id, user_id, f"Declined by {officer_name}: {full_explanation}"))
+            
+            cursor.execute("""
+                SELECT u.id FROM users u 
+                JOIN roles r ON u.role_id = r.id 
+                WHERE UPPER(r.name) IN ('ADMIN', 'SUPER_ADMIN')
+            """)
+            admin_users = cursor.fetchall()
+            for admin in admin_users:
+                cursor.execute("""
+                    INSERT INTO notifications (user_id, title, message, entity_type, entity_id, type, priority, module)
+                    VALUES (?, 'Request Declined - Reassignment Required', ?, 'Request', ?, 'ALERT', 'HIGH', 'ADMIN')
+                """, (admin['id'], f"Officer {officer_name} declined Request #{creq['request_id_code']}: {full_explanation}", request_id))
+                
+            conn.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Request assignment declined and forwarded for reassignment.'
+            })
+            
+        return jsonify({'success': False, 'message': 'Task not found or not assigned to you'}), 403
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@officer_api_bp.route('/requests/<int:request_id>/status', methods=['PUT'])
+@role_required('OFFICER')
+def update_request_status(request_id):
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    new_status = data.get('status')
+    remarks = data.get('remarks', '')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Check citizen_report
+        cursor.execute("SELECT id FROM citizen_reports WHERE id = ? AND officer_id = ?", (request_id, user_id))
+        report = cursor.fetchone()
+        if report:
+            cursor.execute("UPDATE citizen_reports SET status = ? WHERE id = ?", (new_status, request_id))
+            cursor.execute("""
+                INSERT INTO report_timeline (report_id, event_type, description)
+                VALUES (?, 'STATUS_UPDATE', ?)
+            """, (request_id, f"Status updated to {new_status}" + (f": {remarks}" if remarks else "")))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Status updated successfully'})
+            
+        # Check citizen_request
+        cursor.execute("SELECT * FROM request_assignments WHERE request_id = ? AND officer_id = ?", (request_id, user_id))
+        if cursor.fetchone():
+            cursor.execute("UPDATE citizen_requests SET status = ? WHERE id = ?", (new_status, request_id))
+            cursor.execute("""
+                INSERT INTO request_updates (request_id, user_id, status_change, remarks) 
+                VALUES (?, ?, ?, ?)
+            """, (request_id, user_id, new_status, remarks))
+            cursor.execute("INSERT INTO audit_logs (user_id, action, entity, entity_id, new_value) VALUES (?, 'UPDATE_STATUS', 'Request', ?, ?)",
+                (user_id, request_id, f"Status updated to {new_status}"))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Status updated'})
+            
+        return jsonify({'success': False, 'message': 'Not authorized'}), 403
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 
 @officer_api_bp.route('/inspections')
 @role_required('OFFICER')
