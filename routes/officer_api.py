@@ -362,25 +362,40 @@ def get_requests():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
+    # 1. Citizen requests via request_assignments
     cursor.execute("""
         SELECT cr.id, cr.request_id_code, cr.title, cr.category as service, cr.priority, 
                cr.status, cr.location, cr.created_at, cr.description,
-               u.full_name as citizen_name
+               u.full_name as citizen_name, 'REQUEST' as source_type
         FROM citizen_requests cr
         JOIN request_assignments ra ON cr.id = ra.request_id
         LEFT JOIN users u ON cr.citizen_id = u.id
         WHERE ra.officer_id = ?
-        ORDER BY cr.created_at DESC
     """, (user_id,))
-    requests_list = cursor.fetchall()
+    requests_list = list(cursor.fetchall())
     
-    for r in requests_list:
+    # 2. Citizen reports assigned directly to this officer
+    cursor.execute("""
+        SELECT rep.id, rep.report_id_code, rep.title, rep.category as service, rep.severity as priority,
+               rep.status, rep.location, rep.created_at, rep.description,
+               u.full_name as citizen_name, 'REPORT' as source_type
+        FROM citizen_reports rep
+        LEFT JOIN users u ON rep.citizen_id = u.id
+        WHERE rep.officer_id = ?
+    """, (user_id,))
+    reports_list = list(cursor.fetchall())
+    
+    combined = requests_list + reports_list
+    combined.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
+    
+    for r in combined:
         if r['created_at']:
             r['created_at'] = str(r['created_at'])
             
     cursor.close()
     conn.close()
-    return jsonify({'success': True, 'data': requests_list})
+    return jsonify({'success': True, 'data': combined})
+
 
 @officer_api_bp.route('/requests/<int:request_id>/status', methods=['PUT'])
 @role_required('OFFICER')
