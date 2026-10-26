@@ -1,0 +1,12 @@
+Flask
+flask-cors
+mysql-connector-python
+pandas
+numpy
+scikit-learn
+reportlab
+Werkzeug
+Flask-Session
+python-dotenv
+gunicorn
+requests

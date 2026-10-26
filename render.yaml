@@ -18,7 +18,7 @@ services:
     name: smart-sdg-frontend
     runtime: static
     buildCommand: cd client && npm install && npm run build
-    publishPath: client/dist
+    staticPublishPath: client/dist
     routes:
       - type: rewrite
         source: /*
@@ -26,3 +26,4 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
+
