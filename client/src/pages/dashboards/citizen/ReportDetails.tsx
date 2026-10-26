@@ -156,7 +156,7 @@ export default function ReportDetails() {
                     onClick={() => openLightbox(idx)}
                   >
                     <img 
-                      src={`http://localhost:5000${img.file_path}`} 
+                      src={img.file_path} 
                       alt={img.original_filename} 
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
@@ -258,7 +258,7 @@ export default function ReportDetails() {
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm">
           <div className="absolute top-4 right-4 flex space-x-4 z-50">
             <a 
-              href={`http://localhost:5000${evidence[currentImageIndex].file_path}`}
+              href={evidence[currentImageIndex].file_path}
               target="_blank"
               rel="noopener noreferrer"
               className="text-white/70 hover:text-white text-sm font-bold bg-white/10 px-4 py-2 rounded-lg"
@@ -278,7 +278,7 @@ export default function ReportDetails() {
           
           <div className="max-w-5xl max-h-[85vh] w-full px-12 relative flex flex-col items-center justify-center">
             <img 
-              src={`http://localhost:5000${evidence[currentImageIndex].file_path}`}
+              src={evidence[currentImageIndex].file_path}
               alt={evidence[currentImageIndex].original_filename}
               className="max-h-[75vh] w-auto object-contain rounded-lg shadow-2xl"
             />

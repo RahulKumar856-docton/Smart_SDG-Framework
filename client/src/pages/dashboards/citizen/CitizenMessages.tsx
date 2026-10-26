@@ -619,7 +619,7 @@ export default function CitizenMessages() {
                             {msg.attachment_url && (
                               <div className="pt-2 border-t border-white/20">
                                 <a 
-                                  href={`http://localhost:5000${msg.attachment_url}`}
+                                  href={msg.attachment_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className={`inline-flex items-center space-x-1.5 text-xs font-semibold underline ${

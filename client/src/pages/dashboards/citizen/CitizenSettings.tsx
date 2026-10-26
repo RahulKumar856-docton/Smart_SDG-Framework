@@ -262,7 +262,7 @@ export default function CitizenSettings() {
   // Logout
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
     } catch (e) {}
     window.location.href = '/citizen/login';
   };

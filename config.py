@@ -10,7 +10,13 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16 MB limit
     
     # App Settings
-    DEBUG = True
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1')
+
+    # Session cookie settings for Render & cross-origin hosting
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
+    SESSION_COOKIE_HTTPONLY = True
+
 
 class DictCursor:
     def __init__(self, cursor):

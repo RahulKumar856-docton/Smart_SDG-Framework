@@ -19,7 +19,7 @@ export default function CitizenReportsList() {
 
   const fetchReports = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/citizen/reports', { withCredentials: true });
+      const res = await axios.get('/api/citizen/reports', { withCredentials: true });
       if (res.data.success) {
         setReports(res.data.data);
       } else {

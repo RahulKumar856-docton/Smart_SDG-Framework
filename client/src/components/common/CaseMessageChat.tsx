@@ -166,7 +166,7 @@ export default function CaseMessageChat({
                   {msg.attachment_url && (
                     <div className="pt-1.5 mt-1.5 border-t border-slate-100">
                       <a 
-                        href={`http://localhost:5000${msg.attachment_url}`}
+                        href={msg.attachment_url}
                         target="_blank"
                         rel="noreferrer"
                         className="text-[11px] text-blue-600 underline font-semibold flex items-center space-x-1"

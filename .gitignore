@@ -5,5 +5,5 @@ __pycache__/
 database.db
 uploads/
 client/node_modules/
-client/dist/
+# client/dist/ (tracked so Render has frontend ready even if node build is skipped)
 .DS_Store

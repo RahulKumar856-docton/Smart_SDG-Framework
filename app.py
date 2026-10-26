@@ -2,6 +2,12 @@ from flask import Flask, jsonify, send_from_directory, session
 from flask_cors import CORS
 from config import Config
 import os
+import mimetypes
+
+# Ensure standard web MIME types are recognized
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+mimetypes.add_type('image/svg+xml', '.svg')
 
 from routes.api_auth import api_auth_bp
 from routes.api_dashboards import api_dashboards_bp
@@ -34,8 +40,16 @@ def create_app():
     app.url_map.strict_slashes = False
     app.config.from_object(Config)
     
-    # Enable CORS
-    CORS(app, supports_credentials=True)
+    # Enable CORS for local development and Render deployments
+    raw_cors = os.environ.get('CORS_ORIGINS', '')
+    allowed_origins = [o.strip() for o in raw_cors.split(',') if o.strip()]
+    if not allowed_origins:
+        allowed_origins = [
+            r"^http:\/\/localhost(:\d+)?$",
+            r"^http:\/\/127\.0\.0\.1(:\d+)?$",
+            r"^https:\/\/.*\.onrender\.com$",
+        ]
+    CORS(app, supports_credentials=True, origins=allowed_origins)
 
     # Register blueprints
     app.register_blueprint(api_auth_bp, url_prefix='/api/auth')
@@ -95,8 +109,8 @@ def create_app():
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend_or_api(path):
-        # Allow API routes and evidence uploads to be handled by respective endpoints
-        if path.startswith('api/') or path.startswith('uploads/'):
+        # Do not catch API routes or evidence uploads with SPA fallback
+        if path == 'api' or path.startswith('api/') or path == 'uploads' or path.startswith('uploads/'):
             return jsonify({"success": False, "message": "Endpoint not found"}), 404
             
         target = os.path.join(client_dist, path)
@@ -107,7 +121,12 @@ def create_app():
         if os.path.exists(index_file):
             return send_from_directory(client_dist, 'index.html')
             
-        return jsonify({"success": True, "message": "Smart SDG Framework API is running!"})
+        return jsonify({
+            "success": True,
+            "message": "Smart SDG Framework Backend API is running!",
+            "status": "ready",
+            "frontend_status": "No built frontend found in client/dist. Build it using 'bash build.sh' or 'cd client && npm run build'."
+        })
 
     @app.errorhandler(500)
     def internal_error(e):
